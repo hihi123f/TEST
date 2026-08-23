@@ -64,7 +64,7 @@
 
     #tower-selection { width: 280px; background: #fafafa; border-left: 1px solid var(--excel-border); padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
     #tower-selection::-webkit-scrollbar { width: 6px; } #tower-selection::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
-    .tower-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tower-row { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
     .tower-row-title { width: 100%; font-size: 13px; font-weight: bold; border-bottom: 2px solid #ddd; padding-bottom: 4px; margin-bottom: 2px; }
     
     .tower-btn { flex: 1 1 45%; background: #fff; border: 1px solid var(--excel-border); border-radius: 4px; padding: 8px 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.1s; text-align: center; }
@@ -770,8 +770,22 @@
       updateUI(); gameState = 1;
     };
 
-    function gameLoop() {
-      if (gameState !== 1) return; frame++; gameTime++;
+    // 주의: 이 변수는 반드시 함수 바깥(위에) 선언되어야 합니다.
+let lastTimestamp = 0; 
+
+function gameLoop(timestamp) {
+      if (gameState !== 1) return; 
+      
+      // 🚨 [추가된 부분] 모바일 120Hz 디스플레이 방어용 60FPS 강제 고정 로직
+      if (!timestamp) timestamp = performance.now();
+      if (timestamp - lastTimestamp < 15) { 
+        requestAnimationFrame(gameLoop);
+        return;
+      }
+      lastTimestamp = timestamp;
+
+      // 아래부터는 기존 코드와 동일합니다
+      frame++; gameTime++;
       ctx.save();
       if (screenShake > 0) { ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake); screenShake *= 0.85; if (screenShake < 0.5) screenShake = 0; }
       
@@ -829,7 +843,7 @@
 
       ctx.restore(); if (frame % 10 === 0) updateUI();
       if (gameState === 1) requestAnimationFrame(gameLoop);
-    }
+}
     
     window.onload = () => { initUI(); drawExcelGrid(DIMENSIONS.EXCEL); };
   </script>
