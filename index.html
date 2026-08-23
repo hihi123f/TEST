@@ -72,6 +72,16 @@
     .tower-btn.epic { border-color: #f39c12; color: #d35400; } .tower-btn.epic.active { background: #fdebd0; border-width: 2px; }
     .tower-btn.ancient { border-color: #8e44ad; color: #8e44ad; } .tower-btn.ancient.active { background: #f5eef8; border-width: 2px; }
     .tower-btn.hidden-t { background: #2c3e50; color: #fff; border-color: #fff; } .tower-btn.hidden-t.active { background: #1a252f; box-shadow: 0 0 6px #fff; }
+    /* 제작 가능한 타워 강조 효과 (스마트 UI) */
+.tower-btn { opacity: 0.8; transition: all 0.3s ease; }
+.tower-btn.craftable {
+  opacity: 1;
+  animation: craftable-glow 1.5s infinite alternate;
+}
+@keyframes craftable-glow {
+  from { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: #f1c40f; }
+  to { box-shadow: 0 0 15px rgba(241, 196, 15, 1); border-color: #f39c12; }
+}
 
     .overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 10; }
     .overlay h1 { margin: 0 0 15px 0; color: #fff; font-size: 32px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
@@ -269,6 +279,11 @@
       VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 45, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격" },
       AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 15, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격" },
       MAX: { type:"base", cost: 130, range: 500, rate: 75, dmg: 180, color: "#8e44ad", name: "MAX", desc:"사거리 맵 전체의 강력한 한 방" },
+      // 독 타워 (1초에 60프레임 기준, time: 180은 3초간 지속)
+      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 10, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 0.5, time: 180 }, desc:"적에게 3초간 지속 독 데미지" },
+
+      // 연쇄 번개 타워 (chain: 3은 3번 튕김)
+      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 25, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개" },
       
       SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 80, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
       COUNTIFS: { type:"epic", req: ["MAX", "SUM"], range: 180, rate: 4, dmg: 35, color: "#1abc9c", name: "CNTIFS", desc:"초고속 연사 기관총" },
@@ -432,6 +447,10 @@
         this.scale = this.baseScale; this.stunTimer = 0; this.slowTimer = 0;
         this.isInvincible = false; this.invincTimer = 0;
 
+        // ☠️ [추가된 부분] 독 데미지 관련 변수
+        this.poisonTimer = 0;
+        this.poisonDmg = 0;
+
         if (isBoss) {
           Sound.dimShift();
           const warning = dimName==="DEV" ? "⚠️ FATAL BSOD ⚠️" : (dimName==="PPT" ? "⚠️ SLIDE MASTER ⚠️" : "⚠️ BOSS ⚠️");
@@ -448,6 +467,16 @@
       }
       update() {
         if (this.isBoss && this.dimName === "PPT") { this.invincTimer++; this.isInvincible = (this.invincTimer % 200 < 60); }
+        
+        // ☠️ [추가된 부분] 독 데미지 적용 로직
+        if (this.poisonTimer > 0) {
+          this.poisonTimer--;
+          this.hp -= this.poisonDmg; // 방어막 무시 직접 타격
+          if (frame % 30 === 0 && Math.random() > 0.3) {
+            floatingTexts.push(new FloatingText(this.x, this.y - 20, "독!", "#2ecc71", false, 30));
+          }
+        }
+
         if (this.stunTimer > 0) { this.stunTimer--; this.hitFlash = Math.max(this.hitFlash, 1); } 
         else {
           if (this.slowTimer > 0) { this.slowTimer--; if (this.slowTimer <= 0) this.currentSpeed = this.speed; }
@@ -457,9 +486,19 @@
         if (this.scale > this.baseScale) this.scale -= 0.05;
         this.updateCoords();
       }
-      takeDamage(dmg, pierce = false, stunTime = 0) {
+      
+      // ☠️ [수정된 부분] 파라미터에 poisonSpec 추가 및 세팅
+      takeDamage(dmg, pierce = false, stunTime = 0, poisonSpec = null) {
         if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return; }
+        
         if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
+        
+        // 독 데미지 스펙이 들어오면 독 타이머 초기화
+        if (poisonSpec) {
+          this.poisonTimer = poisonSpec.time;
+          this.poisonDmg = poisonSpec.dmg;
+        }
+
         let actualDmg = dmg;
         if (this.shield > 0 && !pierce) { if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } else { this.shield -= actualDmg; } } 
         else { this.hp -= actualDmg; }
@@ -471,10 +510,15 @@
         if (this.isBoss && this.dimName === "PPT") ctx.rotate(this.progress * Math.PI * 4);
         ctx.scale(this.scale, this.scale);
         const isStunned = this.stunTimer > 0; const dimObj = getDimObj(this.tier); const themeCol = dimObj.text;
+        
+        // ☠️ [수정된 부분] 독에 걸렸을 때 약간 초록빛이 돌게 처리
         let bgColor = this.hitFlash > 0 ? (isStunned ? "#e0f7fa" : "#fff") : (this.isBoss ? "#333" : dimObj.bg);
+        if (this.poisonTimer > 0 && this.hitFlash <= 0 && !isStunned && !this.isBoss) bgColor = "#e8f8f5"; 
         if (this.isInvincible) bgColor = "#f1c40f"; 
-        const borderColor = isStunned ? "#00bcd4" : (this.hitFlash > 0 ? "#ff0000" : themeCol);
-        ctx.fillStyle = bgColor; ctx.strokeStyle = borderColor; ctx.lineWidth = this.hitFlash > 0 || this.isInvincible ? 2 : 1;
+
+        const borderColor = isStunned ? "#00bcd4" : (this.poisonTimer > 0 ? "#2ecc71" : (this.hitFlash > 0 ? "#ff0000" : themeCol));
+        
+        ctx.fillStyle = bgColor; ctx.strokeStyle = borderColor; ctx.lineWidth = this.hitFlash > 0 || this.isInvincible || this.poisonTimer > 0 ? 2 : 1;
         
         if (this.dimName === "PPT") { ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(24, 12); ctx.lineTo(-24, 12); ctx.closePath(); ctx.fill(); ctx.stroke(); }
         else if (this.dimName === "HWP") { ctx.beginPath(); ctx.roundRect(-24, -12, 48, 24, 4); ctx.fill(); ctx.stroke(); }
@@ -563,28 +607,79 @@
     }
 
     class Projectile {
-      constructor(x, y, target, tower) { this.x = x; this.y = y; this.target = target; this.tower = tower; this.speed = tower.type.includes("MAX") || tower.type.includes("LARGE") || tower.type.includes("LET") ? 25 : (tower.baseSpec.splash ? 8 : 12); }
+      // ⚡ [수정됨] hitSet 파라미터를 추가하여 한 번 맞은 적은 연쇄 번개에 또 맞지 않도록 방지
+      constructor(x, y, target, tower, hitSet = new Set()) { 
+        this.x = x; this.y = y; this.target = target; this.tower = tower; 
+        this.speed = tower.type.includes("MAX") || tower.type.includes("LARGE") || tower.type.includes("LET") ? 25 : (tower.baseSpec.splash ? 8 : 12); 
+        
+        // ⚡ [추가됨] 연쇄 타격 관련 변수
+        this.hitSet = hitSet; 
+        this.chainCount = tower.baseSpec.chain || 0; 
+      }
+      
       update() {
         if (!enemies.includes(this.target)) return true;
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
         if (Math.hypot(dx, dy) < 15) { this.hit(); return true; }
         this.x += (dx / Math.hypot(dx, dy)) * this.speed; this.y += (dy / Math.hypot(dx, dy)) * this.speed; return false;
       }
+      
       hit() {
+        // ⚡ [추가됨] 번개가 튕길 때 중복 타격을 막기 위해 현재 타겟을 기록
+        this.hitSet.add(this.target);
+
         if (this.tower.baseSpec.splash) {
           addShake(2 + Math.min(4, this.tower.level * 0.5)); Sound.hit("VLOOKUP");
           const splashRange = this.tower.baseSpec.splash * (1 + (this.tower.level - 1) * 0.1);
           if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, splashRange, this.tower.baseSpec.color));
-          enemies.forEach(e => { if (Math.hypot(e.x - this.x, e.y - this.y) <= splashRange) { const falloff = 1 - (Math.hypot(e.x - this.x, e.y - this.y) / splashRange) * 0.3; e.takeDamage(this.tower.dmg * falloff, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0); } });
+          
+          enemies.forEach(e => { 
+            if (Math.hypot(e.x - this.x, e.y - this.y) <= splashRange) { 
+              const falloff = 1 - (Math.hypot(e.x - this.x, e.y - this.y) / splashRange) * 0.3; 
+              // ☠️ [수정됨] 광역 공격 시 독 데미지 스펙(poisonSpec)도 함께 전달
+              e.takeDamage(this.tower.dmg * falloff, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec); 
+            } 
+          });
           if(highQuality) for (let i = 0; i < 4; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 4));
         } else {
-          Sound.hit(this.tower.type, this.target.isBoss); this.target.takeDamage(this.tower.dmg, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0);
+          Sound.hit(this.tower.type, this.target.isBoss); 
+          // ☠️ [수정됨] 단일 공격 시 독 데미지 스펙(poisonSpec) 전달
+          this.target.takeDamage(this.tower.dmg, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec);
           if(highQuality) for (let i = 0; i < 2; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 3));
         }
+
+        // ⚡ [추가됨] 연쇄 번개(체인 라이트닝) 로직
+        if (this.chainCount > 0) {
+          let nextTarget = null;
+          let minDist = 150; // 번개가 튕기는 최대 사거리 탐색
+          
+          for (let e of enemies) {
+            // 이번 발사에서 아직 맞지 않은 적 찾기
+            if (!this.hitSet.has(e)) {
+              let d = Math.hypot(e.x - this.target.x, e.y - this.target.y);
+              if (d < minDist) { minDist = d; nextTarget = e; }
+            }
+          }
+          
+          if (nextTarget) {
+            // 새로운 투사체를 생성해서 다음 타겟으로 발사!
+            let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
+            nextProj.chainCount = this.chainCount - 1; // 연쇄 횟수 1 차감
+            nextProj.speed = this.speed * 1.5; // 튕기는 번개는 조금 더 빠르게 세팅
+            projectiles.push(nextProj);
+            
+            // 번개가 튕길 때 이펙트 추가
+            if(highQuality) shockwaves.push(new Shockwave(this.target.x, this.target.y, 15, this.tower.baseSpec.color));
+          }
+        }
       }
+      
       draw() {
         ctx.fillStyle = this.tower.baseSpec.color;
-        if (this.tower.baseSpec.splash || this.tower.type.includes("MAX") || this.tower.type.includes("LARGE") || this.tower.type.includes("LET")) { ctx.beginPath(); ctx.arc(this.x, this.y, this.tower.baseSpec.splash ? 5 : 4, 0, Math.PI * 2); ctx.fill(); } 
+        // ⚡ [수정됨] 연쇄 번개(chain) 타워의 투사체도 동그라미 모양으로 출력되도록 조건 추가
+        if (this.tower.baseSpec.splash || this.tower.baseSpec.chain || this.tower.type.includes("MAX") || this.tower.type.includes("LARGE") || this.tower.type.includes("LET")) { 
+          ctx.beginPath(); ctx.arc(this.x, this.y, this.tower.baseSpec.splash ? 5 : 4, 0, Math.PI * 2); ctx.fill(); 
+        } 
         else { ctx.font = "bold 14px monospace"; ctx.fillText(";", this.x, this.y); }
       }
     }
@@ -728,7 +823,27 @@
           floatingTexts.push(new FloatingText(880/2, 490/2 - 50, `차원 붕괴! [${currentDimName}] 유니버스 진입`, dimObj.bar, true, 80));
         }
       }
-    }
+
+      // 🎯 [여기 추가됨!] 스마트 조합 활성화 UI 로직
+      const builtTowerTypes = towers.map(t => t.type); // 필드에 건설된 타워들의 종류 목록
+      
+      document.querySelectorAll(".tower-btn").forEach(btn => {
+        const type = btn.dataset.type;
+        const spec = TOWER_SPECS[type];
+        
+        // 에픽, 고대 등 조합 조건(req)이 있는 타워만 검사
+        if (spec && spec.req) {
+          // req 배열에 있는 모든 타워가 builtTowerTypes 안에 포함되어 있는지 확인
+          const canCraft = spec.req.every(reqType => builtTowerTypes.includes(reqType));
+          
+          if (canCraft) {
+            btn.classList.add("craftable"); // 불 들어오기
+          } else {
+            btn.classList.remove("craftable"); // 불 끄기
+          }
+        }
+      });
+}
 
     // --- 7. 메인 루프 제어 & 일시정지 ---
     function togglePause() {
