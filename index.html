@@ -129,6 +129,7 @@
       <div class="stat-badge">💰 예산: $<span id="budget">300</span></div>
       <div class="stat-badge" id="tier-badge">📈 티어: 1 (EXCEL)</div>
       <div style="margin-left: auto; display:flex;">
+        <button class="btn-toolbar btn-pause" id="pause-btn" onclick="togglePause()">⏸️ 일시정지</button>
         <button class="btn-toolbar btn-full" onclick="goFullscreen()">📱 앱모드</button>
         <button class="btn-toolbar btn-quality" id="quality-btn" onclick="toggleQuality()">⚙️ 품질: 높음</button>
         <button class="btn-toolbar" onclick="toggleModal('info-modal')">❓ 타워 설명</button>
@@ -542,6 +543,9 @@
         this.isSynergy = !!this.baseSpec.req; this.level = 1; 
         this.totalSpent = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
         this.updateStats(); this.cooldown = 0; this.recoil = 0; this.laserTargets = [];
+        
+        // 🎯 [추가됨] 누적 딜량 기록 변수
+        this.totalDamageDealt = 0; 
       }
       updateStats() {
         // 증강(글로벌 변수) 배수들을 곱해줍니다!
@@ -576,8 +580,17 @@
           if (this.cooldown <= 0) {
             targets.forEach(t => {
               t.takeDamage(this.dmg, this.baseSpec.pierce, this.baseSpec.stun || 0);
+              // 🎯 [추가됨] 레이저 기본 타격 누적 딜량 기록
+              this.totalDamageDealt += this.dmg; 
+              
               if (this.baseSpec.splash) {
-                enemies.forEach(e => { if (e !== t && Math.hypot(e.x - t.x, e.y - t.y) <= this.baseSpec.splash) e.takeDamage(this.dmg * 0.5, true); });
+                enemies.forEach(e => { 
+                  if (e !== t && Math.hypot(e.x - t.x, e.y - t.y) <= this.baseSpec.splash) {
+                    e.takeDamage(this.dmg * 0.5, true); 
+                    // 🎯 [추가됨] 레이저 광역 타격 누적 딜량 기록
+                    this.totalDamageDealt += (this.dmg * 0.5); 
+                  }
+                });
                 if(highQuality) shockwaves.push(new Shockwave(t.x, t.y, this.baseSpec.splash, this.baseSpec.color));
               }
               t.currentSpeed = t.speed * Math.max(0.1, 0.4 - (this.level * 0.02)); t.slowTimer = 10; 
@@ -607,12 +620,10 @@
     }
 
     class Projectile {
-      // ⚡ [수정됨] hitSet 파라미터를 추가하여 한 번 맞은 적은 연쇄 번개에 또 맞지 않도록 방지
       constructor(x, y, target, tower, hitSet = new Set()) { 
         this.x = x; this.y = y; this.target = target; this.tower = tower; 
         this.speed = tower.type.includes("MAX") || tower.type.includes("LARGE") || tower.type.includes("LET") ? 25 : (tower.baseSpec.splash ? 8 : 12); 
         
-        // ⚡ [추가됨] 연쇄 타격 관련 변수
         this.hitSet = hitSet; 
         this.chainCount = tower.baseSpec.chain || 0; 
       }
@@ -625,7 +636,6 @@
       }
       
       hit() {
-        // ⚡ [추가됨] 번개가 튕길 때 중복 타격을 막기 위해 현재 타겟을 기록
         this.hitSet.add(this.target);
 
         if (this.tower.baseSpec.splash) {
@@ -636,25 +646,29 @@
           enemies.forEach(e => { 
             if (Math.hypot(e.x - this.x, e.y - this.y) <= splashRange) { 
               const falloff = 1 - (Math.hypot(e.x - this.x, e.y - this.y) / splashRange) * 0.3; 
-              // ☠️ [수정됨] 광역 공격 시 독 데미지 스펙(poisonSpec)도 함께 전달
-              e.takeDamage(this.tower.dmg * falloff, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec); 
+              // 🎯 [수정됨] 실제 들어간 데미지를 계산하고 누적 딜량에 더해줍니다.
+              const actualDmg = this.tower.dmg * falloff;
+              e.takeDamage(actualDmg, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec); 
+              this.tower.totalDamageDealt += actualDmg; // 🎯 광역 누적 딜량 기록
             } 
           });
           if(highQuality) for (let i = 0; i < 4; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 4));
         } else {
           Sound.hit(this.tower.type, this.target.isBoss); 
-          // ☠️ [수정됨] 단일 공격 시 독 데미지 스펙(poisonSpec) 전달
           this.target.takeDamage(this.tower.dmg, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec);
+          
+          // 🎯 [추가됨] 단일 타격 누적 딜량 기록 (연쇄 번개도 이 로직을 탐)
+          this.tower.totalDamageDealt += this.tower.dmg; 
+          
           if(highQuality) for (let i = 0; i < 2; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 3));
         }
 
-        // ⚡ [추가됨] 연쇄 번개(체인 라이트닝) 로직
+        // 연쇄 번개(체인 라이트닝) 로직
         if (this.chainCount > 0) {
           let nextTarget = null;
-          let minDist = 150; // 번개가 튕기는 최대 사거리 탐색
+          let minDist = 150; 
           
           for (let e of enemies) {
-            // 이번 발사에서 아직 맞지 않은 적 찾기
             if (!this.hitSet.has(e)) {
               let d = Math.hypot(e.x - this.target.x, e.y - this.target.y);
               if (d < minDist) { minDist = d; nextTarget = e; }
@@ -662,13 +676,11 @@
           }
           
           if (nextTarget) {
-            // 새로운 투사체를 생성해서 다음 타겟으로 발사!
             let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
-            nextProj.chainCount = this.chainCount - 1; // 연쇄 횟수 1 차감
-            nextProj.speed = this.speed * 1.5; // 튕기는 번개는 조금 더 빠르게 세팅
+            nextProj.chainCount = this.chainCount - 1; 
+            nextProj.speed = this.speed * 1.5; 
             projectiles.push(nextProj);
             
-            // 번개가 튕길 때 이펙트 추가
             if(highQuality) shockwaves.push(new Shockwave(this.target.x, this.target.y, 15, this.tower.baseSpec.color));
           }
         }
@@ -676,7 +688,6 @@
       
       draw() {
         ctx.fillStyle = this.tower.baseSpec.color;
-        // ⚡ [수정됨] 연쇄 번개(chain) 타워의 투사체도 동그라미 모양으로 출력되도록 조건 추가
         if (this.tower.baseSpec.splash || this.tower.baseSpec.chain || this.tower.type.includes("MAX") || this.tower.type.includes("LARGE") || this.tower.type.includes("LET")) { 
           ctx.beginPath(); ctx.arc(this.x, this.y, this.tower.baseSpec.splash ? 5 : 4, 0, Math.PI * 2); ctx.fill(); 
         } 
@@ -772,15 +783,30 @@
 
     canvas.addEventListener("pointerleave", () => { hoverCol = -1; hoverRow = -1; });
 
+    // 🎯 [수정됨] 마우스를 뗐을 때(클릭) 이벤트
     canvas.addEventListener("pointerup", (e) => {
-      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-      if (gameState !== 1 || e.button === 2 || isLongPressed) return;
+      // 꾹 누르기(long press) 관련 코드는 이제 불필요하므로 지우거나 무시합니다.
+      if (gameState !== 1 || e.button === 2) return;
       Sound.init();
 
       const pos = getGridPos(e); if (!pos.isValid || pos.col >= COLS || pos.row >= ROWS) return;
       const existing = towers.find(t => t.col === pos.col && t.row === pos.row);
       const spec = TOWER_SPECS[selectedTower];
 
+      // 🎯 [추가됨] 시너지 조합용 클릭인지, 단순 모달 오픈용 클릭인지 구분
+      const isSynergyIngredient = spec.req && existing && spec.req.includes(existing.type);
+      
+      if (existing && !isSynergyIngredient) {
+        openTowerModal(existing); // 조합 재료를 클릭한 게 아니라면 무조건 모달 열기!
+        return;
+      }
+      
+      // 빈 타일을 클릭했다면 열려있는 모달 닫기
+      if (!existing) {
+        closeTowerModal();
+      }
+
+      // --- 이하 기존 조합 및 설치 로직 유지 ---
       if (spec.req) {
         const requiredTypes = spec.req.slice(); const towersToRemove = [];
         if (existing && requiredTypes.includes(existing.type)) { towersToRemove.push(existing); requiredTypes.splice(requiredTypes.indexOf(existing.type), 1); }
@@ -801,8 +827,73 @@
         floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
         updateUI(); return;
       }
-      if (existing) { existing.upgrade(); updateUI(); return; }
+      
+      // if (existing) { existing.upgrade(); updateUI(); return; } // 🚨 기존의 즉시 업그레이드 코드는 삭제됨!
+      
       if (budget >= spec.cost) { budget -= spec.cost; towers.push(new Tower(pos.col, pos.row, selectedTower)); updateUI(); }
+    });
+
+
+    // ----------------------------------------------------
+    // 🎯 [여기부터 새로 추가!] 모달 제어용 변수 및 함수들
+    // 위 pointerup 이벤트 리스너 바로 밑에 붙여넣어 주세요.
+    // ----------------------------------------------------
+    let clickedTowerObj = null;
+
+    window.openTowerModal = function(tower) {
+      clickedTowerObj = tower;
+      const modal = document.getElementById("tower-modal");
+      document.getElementById("tm-title").innerText = tower.displayName;
+      document.getElementById("tm-title").style.color = tower.baseSpec.color;
+      
+      const refund = Math.floor(tower.totalSpent * refundRate);
+      
+      // 딜량과 스탯을 모달창에 입력
+      document.getElementById("tm-stats").innerHTML = `
+        ⚔️ <b>공격력:</b> ${Math.round(tower.dmg)}<br/>
+        🎯 <b>누적 딜량:</b> <span style="color:#d35400; font-weight:bold;">${Math.round(tower.totalDamageDealt || 0).toLocaleString()}</span><br/>
+        📡 <b>사거리:</b> ${Math.round(tower.range)}<br/><br/>
+        💰 <b>투입 예산:</b> $${tower.totalSpent}
+      `;
+      
+      document.getElementById("tm-upgrade").innerText = `업그레이드 ($${tower.upgradeCost})`;
+      document.getElementById("tm-sell").innerText = `판매 (+$${refund})`;
+      
+      modal.style.display = "block";
+    };
+
+    window.closeTowerModal = function() {
+      const modal = document.getElementById("tower-modal");
+      if(modal) modal.style.display = "none";
+      clickedTowerObj = null;
+    };
+
+    // 모달 내 업그레이드 버튼 클릭
+    document.getElementById("tm-upgrade").addEventListener("click", () => {
+      if (clickedTowerObj && clickedTowerObj.upgrade()) {
+        updateUI();
+        openTowerModal(clickedTowerObj); // UI 갱신
+      } else {
+        Sound.error();
+        if(clickedTowerObj) floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 20, "예산 부족!", "#e74c3c", true, 30));
+      }
+    });
+
+    // 모달 내 판매(철거) 버튼 클릭
+    document.getElementById("tm-sell").addEventListener("click", () => {
+      if (clickedTowerObj) {
+        const refund = Math.floor(clickedTowerObj.totalSpent * refundRate); 
+        budget += refund; 
+        
+        const idx = towers.indexOf(clickedTowerObj);
+        if (idx > -1) towers.splice(idx, 1);
+        
+        if(highQuality) { for(let i=0; i<10; i++) particles.push(new Particle(clickedTowerObj.x, clickedTowerObj.y, "#e74c3c", 4)); }
+        floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 15, `판매 (+$${refund})`, "#e74c3c", true, 40));
+        Sound.error(); 
+        updateUI();
+        closeTowerModal();
+      }
     });
 
     function updateUI() {
@@ -845,17 +936,21 @@
       });
 }
 
-    // --- 7. 메인 루프 제어 & 일시정지 ---
     function togglePause() {
-      if (gameState === 1) {
-        gameState = 4; // 일시정지
-        document.getElementById("pause-overlay").style.display = "flex";
-      } else if (gameState === 4) {
-        gameState = 1; // 재개
-        document.getElementById("pause-overlay").style.display = "none";
-        Sound.init(); requestAnimationFrame(gameLoop); 
-      }
-    }
+  const pauseBtn = document.getElementById("pause-btn");
+  if (gameState === 1) {
+    gameState = 4; // 일시정지
+    document.getElementById("pause-overlay").style.display = "flex";
+    pauseBtn.innerText = "▶️ 게임 재개";
+    pauseBtn.style.background = "#e67e22";
+  } else if (gameState === 4) {
+    gameState = 1; // 재개
+    document.getElementById("pause-overlay").style.display = "none";
+    pauseBtn.innerText = "⏸️ 일시정지";
+    pauseBtn.style.background = "#e74c3c"; // 원래 색상 복구
+    Sound.init(); requestAnimationFrame(gameLoop); 
+  }
+}
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") { e.preventDefault(); togglePause(); return; }
@@ -961,6 +1056,61 @@ function gameLoop(timestamp) {
 }
     
     window.onload = () => { initUI(); drawExcelGrid(DIMENSIONS.EXCEL); };
+    let clickedTowerObj = null; // 현재 클릭한 타워 정보 저장
+
+function openTowerModal(tower) {
+  clickedTowerObj = tower;
+  const modal = document.getElementById("tower-modal");
+  document.getElementById("tm-title").innerText = tower.displayName;
+  document.getElementById("tm-title").style.color = tower.baseSpec.color;
+  
+  const refund = Math.floor(tower.totalSpent * refundRate);
+  
+  document.getElementById("tm-stats").innerHTML = `
+    ⚔️ <b>공격력:</b> ${Math.round(tower.dmg)}<br/>
+    🎯 <b>누적 딜량:</b> <span style="color:#d35400; font-weight:bold;">${Math.round(tower.totalDamageDealt).toLocaleString()}</span><br/>
+    📡 <b>사거리:</b> ${Math.round(tower.range)}<br/><br/>
+    💰 <b>투입 예산:</b> $${tower.totalSpent}
+  `;
+  
+  document.getElementById("tm-upgrade").innerText = `업그레이드 ($${tower.upgradeCost})`;
+  document.getElementById("tm-sell").innerText = `판매 (+$${refund})`;
+  
+  modal.style.display = "block";
+}
+
+function closeTowerModal() {
+  document.getElementById("tower-modal").style.display = "none";
+  clickedTowerObj = null;
+}
+
+// 모달 내 업그레이드 버튼 클릭 이벤트
+document.getElementById("tm-upgrade").addEventListener("click", () => {
+  if (clickedTowerObj && clickedTowerObj.upgrade()) {
+    updateUI();
+    openTowerModal(clickedTowerObj); // UI 갱신을 위해 모달 다시 그리기
+  } else {
+    Sound.error();
+    floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 20, "예산 부족!", "#e74c3c", true, 30));
+  }
+});
+
+// 모달 내 판매 버튼 클릭 이벤트
+document.getElementById("tm-sell").addEventListener("click", () => {
+  if (clickedTowerObj) {
+    const refund = Math.floor(clickedTowerObj.totalSpent * refundRate); 
+    budget += refund; 
+    
+    const idx = towers.indexOf(clickedTowerObj);
+    if (idx > -1) towers.splice(idx, 1);
+    
+    if(highQuality) { for(let i=0; i<10; i++) particles.push(new Particle(clickedTowerObj.x, clickedTowerObj.y, "#e74c3c", 4)); }
+    floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 15, `판매 (+$${refund})`, "#e74c3c", true, 40));
+    Sound.error(); 
+    updateUI();
+    closeTowerModal();
+  }
+});
   </script>
 </body>
 </html>
