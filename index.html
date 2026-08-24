@@ -168,6 +168,22 @@
           <div id="recipe-content"></div>
         </div>
 
+        <!-- 🎯 [여기부터 추가!] 타워 상세 정보 모달창 -->
+        <div id="tower-modal" class="modal" style="width: 260px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 60; border-color: #27ae60;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <strong id="tm-title" style="font-size:18px;">타워 이름</strong>
+            <button onclick="closeTowerModal()" style="cursor:pointer; border:none; background:none; font-weight:bold; font-size:16px;">X</button>
+          </div>
+          <div id="tm-stats" style="margin-bottom: 15px; font-size: 13px; line-height: 1.6; color: #333;">
+            <!-- 스탯 정보가 여기에 들어갑니다 -->
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button id="tm-upgrade" class="btn-toolbar btn-quality" style="flex: 1; padding: 10px; margin: 0;">업그레이드</button>
+            <button id="tm-sell" class="btn-toolbar btn-pause" style="flex: 1; padding: 10px; margin: 0;">판매</button>
+          </div>
+        </div>
+        <!-- 🎯 [여기까지 추가 끝!] -->
+
         <div id="start-overlay" class="overlay">
           <h1 style="color: #4cd137;">Multiverse Defense</h1>
           <div style="color:#ddd; margin-bottom: 25px; text-align:center; line-height: 1.6;">
