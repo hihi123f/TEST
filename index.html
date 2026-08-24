@@ -307,6 +307,7 @@
       AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 2 },
       RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 2, time: 180 }, desc:"적에게 3초간 지속 독 데미지", unlockTier: 3 },
       POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 4 },
+      PIVOT: { type:"epic", req: ["AVERAGE", "RATE"], range: 170, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"인접 아군 타워 공격력 대폭(+50%~) 및 사거리 증가 오라" },
       MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 5 },
       
       SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 200, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
@@ -688,35 +689,74 @@
         this.x = pos.x; this.y = pos.y; this.type = type; this.baseSpec = TOWER_SPECS[type];
         this.isSynergy = !!this.baseSpec.req; this.level = 1; 
         this.totalSpent = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
-        this.updateStats(); this.cooldown = 0; this.recoil = 0; this.laserTargets = [];
+        this.cooldown = 0; this.recoil = 0; this.laserTargets = [];
         this.totalDamageDealt = 0; 
+        this.updateStats(); 
       }
+      
       updateStats() {
-        this.dmg = (this.baseSpec.dmg * Math.pow(1.45, this.level - 1)) * globalDmgMult;    
+        // 🎯 [추가됨] 오라 타워(PIVOT) 버프 계산 로직 (중복 시 가장 높은 레벨 1개만 적용)
+        let auraDmgMult = 1.0;
+        let auraRangeMult = 1.0;
+
+        if (!this.baseSpec.aura) {
+          towers.forEach(t => {
+            if (t.baseSpec.aura && t !== this) {
+              const dist = Math.hypot(this.x - t.x, this.y - t.y);
+              if (dist <= t.range) { 
+                // PIVOT 레벨당 효율 (기본 공격력 +50%, 사거리 +15%, 레벨업 시 추가 상승)
+                const bDmg = 1.5 + (t.level - 1) * 0.2; 
+                const bRange = 1.15 + (t.level - 1) * 0.03;
+                if (bDmg > auraDmgMult) auraDmgMult = bDmg;
+                if (bRange > auraRangeMult) auraRangeMult = bRange;
+              }
+            }
+          });
+        }
+
+        // 🎯 계산된 오라 배율을 스탯에 곱해서 최종 반영
+        this.dmg = (this.baseSpec.dmg * Math.pow(1.45, this.level - 1)) * globalDmgMult * auraDmgMult;    
         const baseCost = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
         this.upgradeCost = Math.floor((baseCost * Math.pow(1.2, this.level)) * globalCostMult);
-        this.range = (this.baseSpec.range * (1 + (this.level - 1) * 0.01)) * globalRangeMult; 
+        
+        this.range = (this.baseSpec.range * (1 + (this.level - 1) * 0.01)) * globalRangeMult * auraRangeMult; 
+        
         this.rate = Math.max(2, Math.round((this.baseSpec.rate - (this.level - 1) * 0.4) * globalRateMult));
         
         const maxLvl = this.baseSpec.type === "base" ? 5 : (this.baseSpec.type === "epic" ? 10 : 15);
         this.displayName = this.level >= maxLvl ? `${this.baseSpec.name} MAX` : `${this.baseSpec.name} L${this.level}`;
       }
+      
       upgrade() {
         const maxLvl = this.baseSpec.type === "base" ? 5 : (this.baseSpec.type === "epic" ? 10 : 15);
         if (this.level >= maxLvl) {
           floatingTexts.push(new FloatingText(this.x, this.y - 20, "MAX LEVEL!", "#e74c3c", true, 30));
-          Sound.error();
-          return false;
+          Sound.error(); return false;
         }
 
         if (budget >= this.upgradeCost) {
           budget -= this.upgradeCost; this.totalSpent += this.upgradeCost; 
-          this.level++; this.updateStats(); Sound.upgrade();
+          this.level++; 
+          
+          towers.forEach(t => t.updateStats()); // 업그레이드 시 오라 재계산을 위해 전체 갱신
+          
+          Sound.upgrade();
           floatingTexts.push(new FloatingText(this.x, this.y - 20, "UP!", this.baseSpec.color, true, 20)); return true;
         } return false;
       }
+      
       update() {
         if (this.recoil > 0) this.recoil--; if (this.cooldown > 0) this.cooldown--;
+        
+        // 🎯 [추가됨] 피벗(오라) 타워는 공격을 하지 않고, 1.5초마다 영역 파동 발생
+        if (this.baseSpec.aura) {
+          if (this.cooldown <= 0) {
+            this.cooldown = 90; 
+            if (highQuality) shockwaves.push(new Shockwave(this.x, this.y, this.range, this.baseSpec.color));
+          }
+          return; // 공격 로직 생략
+        }
+
         let targets = [];
         if (this.baseSpec.multi) {
           targets = enemies.filter(e => Math.hypot(e.x - this.x, e.y - this.y) <= this.range)
@@ -755,9 +795,12 @@
           }
         }
       }
+      
       draw() {
         const cellLeft = HEADER_W + this.col * CELL_W; const cellTop = HEADER_H + this.row * CELL_H;
         ctx.fillStyle = this.type === "LAMBDA" ? "#111" : (this.isSynergy ? "#fdebd0" : (this.level > 1 ? `hsla(${this.level*25}, 80%, 75%, 0.3)` : "#e8f5e9"));
+        if (this.baseSpec.aura) ctx.fillStyle = "#ffebcc"; // 오라 타워 전용 황금빛 타일
+        
         ctx.fillRect(cellLeft + 1, cellTop + 1, CELL_W - 2, CELL_H - 2);
         ctx.strokeStyle = this.type === "LAMBDA" ? "#8e44ad" : this.baseSpec.color; ctx.lineWidth = this.recoil > 0 ? 4 : 2; ctx.strokeRect(cellLeft + 1, cellTop + 1, CELL_W - 2, CELL_H - 2);
         ctx.fillStyle = this.type === "LAMBDA" ? "#fff" : this.baseSpec.color; ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(this.displayName, this.x, this.y);
@@ -932,11 +975,11 @@
         const refund = Math.floor(t.totalSpent * refundRate); 
         budget += refund; 
         towers.splice(idx, 1);
+        towers.forEach(tw => tw.updateStats()); // 🎯 맵 스탯 실시간 갱신
         
         if(highQuality) { for(let i=0; i<10; i++) particles.push(new Particle(t.x, t.y, "#e74c3c", 4)); }
         floatingTexts.push(new FloatingText(t.x, t.y - 15, `판매 (+$${refund})`, "#e74c3c", true, 40));
-        Sound.error(); 
-        updateUI();
+        Sound.error(); updateUI();
       }
     }
 
@@ -974,12 +1017,8 @@
         openTowerModal(existing); 
         return;
       }
-      
-      if (!existing) {
-        closeTowerModal();
-      }
+      if (!existing) closeTowerModal();
 
-      // --- 이하 기존 조합 및 설치 로직 유지 ---
       if (spec.req) {
         const requiredTypes = spec.req.slice(); const towersToRemove = [];
         if (existing && requiredTypes.includes(existing.type)) { towersToRemove.push(existing); requiredTypes.splice(requiredTypes.indexOf(existing.type), 1); }
@@ -995,22 +1034,29 @@
           if(highQuality) for(let i=0; i<8; i++) particles.push(new Particle(t.x, t.y, "#888", 3));
         });
         refundGold = Math.floor(refundGold); budget += refundGold;
+        
         towers.push(new Tower(pos.col, pos.row, selectedTower)); Sound.synergy();
+        towers.forEach(t => t.updateStats()); // 🎯 설치 완료 후 오라 재계산
+        
         floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
         
-        // 🎯 [추가됨] 도감 시스템: 처음 발견한 조합이면 로컬스토리지에 저장 및 UI 갱신
         if (!discoveredRecipes.includes(selectedTower)) {
           discoveredRecipes.push(selectedTower);
           localStorage.setItem("multiverse_recipes", JSON.stringify(discoveredRecipes));
           floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 35, "NEW RECIPE!", "#00ffff", true, 60));
-          renderSidebarAndModals(); // 사이드바 및 도감 모달 즉시 갱신
+          renderSidebarAndModals(); 
         } else {
           floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
         }
         updateUI(); return;
       }
       
-      if (budget >= spec.cost) { budget -= spec.cost; towers.push(new Tower(pos.col, pos.row, selectedTower)); updateUI(); }
+      if (budget >= spec.cost) { 
+        budget -= spec.cost; 
+        towers.push(new Tower(pos.col, pos.row, selectedTower)); 
+        towers.forEach(t => t.updateStats()); // 🎯 일반 타워 설치 시에도 재계산
+        updateUI(); 
+      }
     });
 
     let clickedTowerObj = null;
@@ -1065,12 +1111,11 @@
         
         const idx = towers.indexOf(clickedTowerObj);
         if (idx > -1) towers.splice(idx, 1);
+        towers.forEach(tw => tw.updateStats()); // 🎯 맵 스탯 실시간 갱신
         
         if(highQuality) { for(let i=0; i<10; i++) particles.push(new Particle(clickedTowerObj.x, clickedTowerObj.y, "#e74c3c", 4)); }
         floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 15, `판매 (+$${refund})`, "#e74c3c", true, 40));
-        Sound.error(); 
-        updateUI();
-        closeTowerModal();
+        Sound.error(); updateUI(); closeTowerModal();
       }
     });
 
