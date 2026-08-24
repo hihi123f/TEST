@@ -348,8 +348,9 @@
     }
 
     // --- 4. 사운드 엔진 ---
+    // --- 4. 사운드 엔진 ---
     let audioCtx = null;
-    const Sound = const Sound = {
+    const Sound = {
       lastPlay: {},
       init() { try{ if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch(e){} },
       canPlay(type, cd) { const now = Date.now(); if (now - (this.lastPlay[type] || 0) > cd) { this.lastPlay[type] = now; return true; } return false; },
