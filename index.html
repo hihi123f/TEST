@@ -1256,6 +1256,23 @@ function gameLoop(timestamp) {
         lastBossTier = currentTier; // 중복 스폰 방지
       }
 
+      // 👇 여기서부터 수정! 보스가 살아있는지 확인합니다.
+      const isBossAlive = enemies.some(e => e.isBoss);
+
+      const spawnInterval = Math.max(15, 60 - currentTier * 3);
+      
+      // 👇 보스가 없을 때(!isBossAlive)만 일반 몹을 스폰합니다!
+      if (!isBossAlive && frame % spawnInterval === 0) {
+        enemies.push(new ErrorEnemy(currentTier, false));
+        if (enemies.length >= MAX_ENEMIES) {
+          gameState = 2; Sound.hit("MAX", true);
+          document.getElementById("go-title").innerText = currentDimName === "DEV" ? "BSOD: CRITICAL_PROCESS_DIED" : "#STACK_OVERFLOW!";
+          document.getElementById("final-score").innerText = `최종 티어: ${currentTier} (${currentDimName}) | 버틴 시간: ${Math.floor(gameTime/60)}초`;
+          document.getElementById("game-over-overlay").style.display = "flex";
+          ctx.restore(); requestAnimationFrame(gameLoop); return;
+        }
+      }
+
       // 기존의 쉴 새 없는 끝없는 스폰 로직 그대로 유지
       const spawnInterval = Math.max(15, 60 - currentTier * 3);
       if (frame % spawnInterval === 0) {
@@ -1279,7 +1296,10 @@ function gameLoop(timestamp) {
           if (enemies[i].type === "SPILL" && !enemies[i].isSub) {
             for (let j = 1; j <= 2; j++) {
               let sub = new ErrorEnemy(currentTier, false);
-              sub.type = "NORMAL"; sub.tag = "sub_spill"; sub.isSub = true; 
+              
+              // 👇 이 줄을 아래처럼 바꿔주세요!
+              sub.type = "NORMAL"; sub.tag = "#FRAGMENT!"; sub.isSub = true; 
+              
               sub.scale = enemies[i].baseScale * 0.65;
               sub.maxHp = enemies[i].maxHp * 0.3; sub.hp = sub.maxHp;
               sub.progress = Math.max(0, enemies[i].progress - 0.015 * j); 
