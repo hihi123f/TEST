@@ -1344,7 +1344,16 @@
       if (gameState === 1) requestAnimationFrame(gameLoop);
     }
     
-    window.onload = () => { renderSidebarAndModals(); drawExcelGrid(DIMENSIONS.EXCEL); };
+    window.onload = () => { 
+      // 🎯 [추가됨] 로컬스토리지 설정값 및 최고기록 UI 초기 반영
+      document.getElementById("best-tier-badge").innerText = bestTier;
+      const qBtn = document.getElementById("quality-btn");
+      qBtn.innerText = highQuality ? "⚙️ 품질: 높음" : "⚙️ 품질: 낮음";
+      qBtn.style.background = highQuality ? "#16a085" : "#7f8c8d";
+      
+      renderSidebarAndModals(); 
+      drawExcelGrid(DIMENSIONS.EXCEL); 
+    };
     
   </script>
 </body>
