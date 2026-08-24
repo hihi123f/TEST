@@ -1094,6 +1094,7 @@ if (this.chainCount > 0) {
     function updateUI() {
       const el = document.getElementById("enemy-count"); el.innerText = enemies.length;
       el.className = ""; if (enemies.length < 100) el.classList.add("traffic-green"); else if (enemies.length < 200) el.classList.add("traffic-yellow"); else el.classList.add("traffic-red");
+      
       const newTier = Math.floor(gameTime / 600) + 1;
       document.getElementById("budget").innerText = budget;
       document.getElementById("tier-badge").innerText = `📈 티어: ${newTier} (${getDimName(newTier)})`;
@@ -1108,28 +1109,30 @@ if (this.chainCount > 0) {
           Sound.dimShift();
           floatingTexts.push(new FloatingText(880/2, 490/2 - 50, `차원 붕괴! [${currentDimName}] 유니버스 진입`, dimObj.bar, true, 80));
         }
+
+        // 🎯 [추가됨] 스테이지형 보스: 티어가 15의 배수(15, 30, 45...)일 때 확정 스폰
+        if (currentTier % 15 === 0) {
+          enemies.push(new ErrorEnemy(currentTier, true)); // isBoss = true로 생성
+        }
       }
 
-      // 🎯 [여기 추가됨!] 스마트 조합 활성화 UI 로직
-      const builtTowerTypes = towers.map(t => t.type); // 필드에 건설된 타워들의 종류 목록
+      // 스마트 조합 활성화 UI 로직
+      const builtTowerTypes = towers.map(t => t.type); 
       
       document.querySelectorAll(".tower-btn").forEach(btn => {
         const type = btn.dataset.type;
         const spec = TOWER_SPECS[type];
         
-        // 에픽, 고대 등 조합 조건(req)이 있는 타워만 검사
         if (spec && spec.req) {
-          // req 배열에 있는 모든 타워가 builtTowerTypes 안에 포함되어 있는지 확인
           const canCraft = spec.req.every(reqType => builtTowerTypes.includes(reqType));
-          
           if (canCraft) {
-            btn.classList.add("craftable"); // 불 들어오기
+            btn.classList.add("craftable");
           } else {
-            btn.classList.remove("craftable"); // 불 끄기
+            btn.classList.remove("craftable");
           }
         }
       });
-}
+    }
 
     function togglePause() {
   const pauseBtn = document.getElementById("pause-btn");
@@ -1181,7 +1184,7 @@ let lastTimestamp = 0;
 function gameLoop(timestamp) {
       if (gameState !== 1) return; 
       
-      // 🚨 [추가된 부분] 모바일 120Hz 디스플레이 방어용 60FPS 강제 고정 로직
+      // 🚨 모바일 120Hz 디스플레이 방어용 60FPS 강제 고정 로직
       if (!timestamp) timestamp = performance.now();
       if (timestamp - lastTimestamp < 15) { 
         requestAnimationFrame(gameLoop);
@@ -1189,7 +1192,6 @@ function gameLoop(timestamp) {
       }
       lastTimestamp = timestamp;
 
-      // 아래부터는 기존 코드와 동일합니다
       frame++; gameTime++;
       ctx.save();
       if (screenShake > 0) { ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake); screenShake *= 0.85; if (screenShake < 0.5) screenShake = 0; }
@@ -1200,7 +1202,7 @@ function gameLoop(timestamp) {
       
       drawExcelGrid(dim);
 
-      if (frame % 3000 === 0 && currentTier > 1) { enemies.push(new ErrorEnemy(currentTier, true)); }
+      // 🎯 [수정됨] 기존 frame % 3000 기반 무작위 보스 스폰 코드 완전 삭제!
 
       const spawnInterval = Math.max(15, 60 - currentTier * 3);
       if (frame % spawnInterval === 0) {
@@ -1222,7 +1224,7 @@ function gameLoop(timestamp) {
             addShake(15); Sound.hit("MAX"); 
             if(highQuality) for(let p=0; p<40; p++) particles.push(new Particle(enemies[i].x, enemies[i].y, "#ffeb3b", 6)); 
             floatingTexts.push(new FloatingText(enemies[i].x, enemies[i].y - 30, "+BOSS REWARD", "#ffeb3b", true, 50)); 
-            showAugments(); 
+            showAugments(); // 🎯 보스 처치 시 증강 획득 로직 발동
           }
           enemies.splice(i, 1); continue;
         }
@@ -1234,10 +1236,8 @@ function gameLoop(timestamp) {
       for (let i = shockwaves.length - 1; i >= 0; i--) { if (shockwaves[i].update()) shockwaves.splice(i, 1); else shockwaves[i].draw(); }
       for (let i = particles.length - 1; i >= 0; i--) { if (particles[i].update()) particles.splice(i, 1); else particles[i].draw(); }
       for (let i = floatingTexts.length - 1; i >= 0; i--) { if (floatingTexts[i].update()) floatingTexts.splice(i, 1); else floatingTexts[i].draw(); }
-       // ⚡ [여기 추가됨!] 번개 이펙트 업데이트 및 그리기
       for (let i = lightnings.length - 1; i >= 0; i--) { if (lightnings[i].update()) lightnings.splice(i, 1); else lightnings[i].draw(); }
 
-      // 🎯 사거리 가이드라인 (마우스 오버 시)
       if (hoverCol >= 0 && hoverRow >= 0 && hoverCol < COLS && hoverRow < ROWS) {
         const existing = towers.find(t => t.col === hoverCol && t.row === hoverRow);
         const specRange = existing ? existing.range : TOWER_SPECS[selectedTower].range;
