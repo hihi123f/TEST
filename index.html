@@ -145,6 +145,7 @@
         <button class="btn-toolbar btn-quality" id="quality-btn" onclick="toggleQuality()">⚙️ 품질: 높음</button>
         <button class="btn-toolbar" onclick="toggleModal('info-modal')">❓ 타워 설명</button>
         <button class="btn-toolbar" onclick="toggleModal('recipe-modal')">📖 조합표</button>
+        <button class="btn-toolbar" onclick="toggleModal('augment-list-modal'); renderAugmentList();">📜 내 증강</button>
         <button class="btn-toolbar btn-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()">▶ 패널닫기</button>
       </div>
     </div>
@@ -166,6 +167,13 @@
         <div id="recipe-modal" class="modal">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><strong style="font-size:16px;">📖 전체 시너지 조합표</strong><button onclick="toggleModal('recipe-modal')" style="cursor:pointer; border:none; background:none; font-weight:bold;">X</button></div>
           <div id="recipe-content"></div>
+        </div>
+        <div id="augment-list-modal" class="modal">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong style="font-size:16px;">📜 획득한 증강 목록</strong>
+            <button onclick="toggleModal('augment-list-modal')" style="cursor:pointer; border:none; background:none; font-weight:bold;">X</button>
+          </div>
+          <div id="augment-list-content" style="font-size:12px; color:#333; line-height:1.5;">아직 획득한 증강이 없습니다.</div>
         </div>
 
         <div id="tower-modal" class="modal" style="width: 260px; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 60; border-color: #27ae60;">
@@ -257,10 +265,51 @@
     }
 
     function toggleModal(id) {
-      ['info-modal', 'recipe-modal'].forEach(m => {
+      ['info-modal', 'recipe-modal', 'augment-list-modal'].forEach(m => {
         const el = document.getElementById(m);
-        el.style.display = (m === id && el.style.display !== 'block') ? 'block' : 'none';
+        if (el) el.style.display = (m === id && el.style.display !== 'block') ? 'block' : 'none';
       });
+    }
+
+    // 🎯 [추가됨] 증강 통계용 전역 변수
+    let activeAugments = [];
+    let stat_execute = 0; let stat_explosion = 0; let stat_discount = 0; let stat_poisonSpread = 0;
+    let stat_critDmg = 0; let stat_gamble = 0; let stat_bossGold = 0; let stat_doubleCast = 0;
+    let stat_freezeDmg = 0; let stat_cosmicDmg = 0; let stat_giantDmg = 0; let stat_mansour = 0;
+
+    // 🎯 [추가됨] 증강 통계 렌더링 함수
+    function renderAugmentList() {
+      const container = document.getElementById("augment-list-content");
+      if (activeAugments.length === 0) {
+        container.innerHTML = "아직 획득한 증강이 없습니다."; return;
+      }
+      let html = "";
+      activeAugments.forEach(aug => {
+        let statText = "";
+        if (aug.name === "단두대 처형") statText = `처형한 적: <b>${stat_execute}</b> 마리`;
+        else if (aug.name === "연쇄 반응") statText = `누적 폭발 딜: <b>${Math.floor(stat_explosion).toLocaleString()}</b>`;
+        else if (aug.name === "알뜰 살뜰") statText = `절약한 예산: <b>$${Math.floor(stat_discount).toLocaleString()}</b>`;
+        else if (aug.name === "맹독 확산") statText = `독 전염 횟수: <b>${stat_poisonSpread}</b> 회`;
+        else if (aug.name === "치명적인 일격") statText = `추가 치명타 딜: <b>${Math.floor(stat_critDmg).toLocaleString()}</b>`;
+        else if (aug.name === "도박 중독") statText = `획득한 골드: <b>$${stat_gamble.toLocaleString()}</b>`;
+        else if (aug.name === "초전도 과부하") statText = `번개 효율 극대화 적용 중`;
+        else if (aug.name === "유리 대포") statText = `공격력 100% 증가 적용 중`;
+        else if (aug.name === "황금빛 갈취") statText = `갈취한 골드: <b>$${stat_bossGold.toLocaleString()}</b>`;
+        else if (aug.name === "시너지 마스터") statText = `조합 타워 위력 폭증 적용 중`;
+        else if (aug.name === "요술사의 장갑") statText = `추가 발사 횟수: <b>${stat_doubleCast}</b> 번`;
+        else if (aug.name === "영구 동토") statText = `증폭된 피해량: <b>${Math.floor(stat_freezeDmg).toLocaleString()}</b>`;
+        else if (aug.name === "우주적 파멸") statText = `궤도 폭격 딜: <b>${Math.floor(stat_cosmicDmg).toLocaleString()}</b>`;
+        else if (aug.name === "만수르의 축복") statText = `지급/환불 이득: <b>$${Math.floor(stat_mansour).toLocaleString()}</b>`;
+        else if (aug.name === "거인 학살자") statText = `체력 비례 추가 딜: <b>${Math.floor(stat_giantDmg).toLocaleString()}</b>`;
+
+        const color = aug.tier === "Silver" ? "#bdc3c7" : (aug.tier === "Gold" ? "#f1c40f" : "#a29bfe");
+        html += `<div class="modal-item">
+          <div class="m-title" style="color:${color};">[${aug.tier}] ${aug.name}</div>
+          <div class="m-desc">${aug.desc}</div>
+          <div style="margin-top:4px; font-size:11px; color:#d35400;">📊 ${statText}</div>
+        </div>`;
+      });
+      container.innerHTML = html;
     }
 
     const canvas = document.getElementById("gameCanvas"); 
@@ -445,7 +494,7 @@
       { tier: "Silver", name: "맹독 확산", desc: "독에 걸린 적 사망 시 주변 적에게 맹독 전염", effect: () => { poisonSpread = true; } },
       { tier: "Silver", name: "치명적인 일격", desc: "모든 공격 시 20% 확률로 2배의 치명타 피해", effect: () => { critChance = 0.2; } },
       
-      { tier: "Gold", name: "도박 중독", desc: "즉시 $1,000 ~ $4,000 랜덤 획득", effect: () => { const g = Math.floor(Math.random()*3001)+1000; budget+=g; floatingTexts.push(new FloatingText(880/2, 490/2+40, `+$${g} 잭팟!`, "#f1c40f", true, 60)); } },
+      { tier: "Gold", name: "도박 중독", desc: "즉시 $1,000 ~ $4,000 랜덤 획득", effect: () => { const g = Math.floor(Math.random()*3001)+1000; budget+=g; stat_gamble+=g; floatingTexts.push(new FloatingText(880/2, 490/2+40, `+$${g} 잭팟!`, "#f1c40f", true, 60)); } },
       { tier: "Gold", name: "초전도 과부하", desc: "연쇄 번개(Chain) 튕기는 횟수 2배 및 사거리 대폭 증가", effect: () => { chainMultiplier = 2; chainRangeMult = 2.0; } },
       { tier: "Gold", name: "유리 대포", desc: "모든 타워 공격력 100% 증가, 단 트래픽 최대 수용량 150으로 반토막", effect: () => { globalDmgMult *= 2.0; MAX_ENEMIES = 150; towers.forEach(t=>t.updateStats()); } },
       { tier: "Gold", name: "황금빛 갈취", desc: "보스 타격 시마다 $10 획득 (보스가 돈줄로 변함)", effect: () => { bossHitGold = 10; } },
@@ -454,7 +503,7 @@
       { tier: "Prismatic", name: "요술사의 장갑", desc: "[더블 캐스트] 모든 투사체 타워가 100% 확률로 2연속 발사", effect: () => { doubleCast = true; } },
       { tier: "Prismatic", name: "영구 동토", desc: "기절/경직 상태인 적이 받는 모든 피해량 2배 증폭", effect: () => { stunnedDmgMult = 2.0; } },
       { tier: "Prismatic", name: "우주적 파멸", desc: "5초마다 맵 전체에 무작위 궤도 폭격 (광역 피해+기절)", effect: () => { cosmicRuin = true; } },
-      { tier: "Prismatic", name: "만수르의 축복", desc: "즉시 $10,000 획득 + 타워 판매 시 100% 전액 환불", effect: () => { budget += 10000; refundRate = 1.0; } },
+      { tier: "Prismatic", name: "만수르의 축복", desc: "즉시 $10,000 획득 + 타워 판매 시 100% 전액 환불", effect: () => { budget += 10000; stat_mansour += 10000; refundRate = 1.0; } },
       { tier: "Prismatic", name: "거인 학살자", desc: "모든 공격에 적의 현재 체력 5% 비례 고정 피해 추가", effect: () => { giantSlayer = 0.05; } }
     ];
 
@@ -476,11 +525,11 @@
          card.innerHTML = `<div class="aug-tier">${aug.tier.toUpperCase()} 증강</div><div class="aug-name">${aug.name}</div><div class="aug-desc">${aug.desc}</div>`;
          card.onclick = () => {
              aug.effect();
+             activeAugments.push(aug); // 🎯 증강 목록에 추가
              towers.forEach(t => t.updateStats()); 
              document.getElementById("augment-overlay").style.display = "none";
              floatingTexts.push(new FloatingText(880/2, 490/2, `[${aug.name}] 적용 완료!`, "#00ff00", true, 80));
-             Sound.synergy(); updateUI();
-             renderSidebarAndModals(); // 알뜰살뜰 등 사이드바 비용 갱신
+             Sound.synergy(); updateUI(); renderSidebarAndModals(); 
              gameState = 1; requestAnimationFrame(gameLoop);
          };
          container.appendChild(card);
@@ -611,15 +660,32 @@
         if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg; }
 
         let actualDmg = dmg;
-        if (giantSlayer > 0) actualDmg += this.hp * giantSlayer;
         
+        // 💎 거인 학살자
+        if (giantSlayer > 0) {
+            const gsDmg = this.hp * giantSlayer;
+            actualDmg += gsDmg;
+            stat_giantDmg += gsDmg;
+        }
+        
+        // 🥈 치명적인 일격
         let isCrit = false;
-        if (critChance > 0 && Math.random() < critChance) { actualDmg *= 2; isCrit = true; }
+        if (critChance > 0 && Math.random() < critChance) { 
+            stat_critDmg += actualDmg; // 증가분 누적
+            actualDmg *= 2; 
+            isCrit = true; 
+        }
         
-        if (this.stunTimer > 0 && stunnedDmgMult > 1.0) actualDmg *= stunnedDmgMult;
+        // 💎 영구 동토
+        if (this.stunTimer > 0 && stunnedDmgMult > 1.0) {
+            stat_freezeDmg += actualDmg * (stunnedDmgMult - 1);
+            actualDmg *= stunnedDmgMult;
+        }
 
+        // 🥇 황금빛 갈취
         if (this.isBoss && bossHitGold > 0) {
             budget += bossHitGold;
+            stat_bossGold += bossHitGold;
             floatingTexts.push(new FloatingText(this.x + (Math.random()-0.5)*20, this.y - 20, `+$${bossHitGold}`, "#f1c40f", false, 20));
         }
 
@@ -629,12 +695,6 @@
           if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
           else { this.shield -= actualDmg; } 
         } else { this.hp -= actualDmg; }
-
-        if (this.hp > 0 && executeThreshold > 0 && this.hp <= this.maxHp * executeThreshold) {
-            this.hp = 0;
-            floatingTexts.push(new FloatingText(this.x, this.y - 30, "처형!", "#ff0000", true, 40));
-            if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, 50, "#ff0000"));
-        }
         
         if (this.shield <= 0 && stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
 
@@ -644,6 +704,14 @@
           enemies.push(new ErrorEnemy(this.tier, false, "NORMAL", Math.max(0, this.progress + 0.01), this.track));
           floatingTexts.push(new FloatingText(this.x, this.y, "분열!", "#9b59b6", true, 40));
           if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, 45, "#9b59b6"));
+        }
+        
+        // 🥈 단두대 처형
+        if (this.hp > 0 && executeThreshold > 0 && this.hp <= this.maxHp * executeThreshold) {
+            this.hp = 0;
+            stat_execute++;
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, "처형!", "#ff0000", true, 40));
+            if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, 50, "#ff0000"));
         }
 
         this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
@@ -794,6 +862,7 @@
               if (doubleCast) {
                   const p2 = new Projectile(this.x + (Math.random()-0.5)*15, this.y + (Math.random()-0.5)*15, t, this);
                   projectiles.push(p2);
+                  stat_doubleCast++; // 추가 발사 카운트
               }
             });
             this.cooldown = this.rate; this.recoil = 5; Sound.shoot(this.type);
@@ -979,6 +1048,7 @@
         const t = towers[idx]; 
         const refund = Math.floor(t.totalSpent * refundRate); 
         budget += refund; 
+        if (refundRate >= 1.0) stat_mansour += (t.totalSpent * (refundRate - 0.7)); // 만수르 이득 누적
         towers.splice(idx, 1);
         towers.forEach(tw => tw.updateStats()); 
         
@@ -1058,6 +1128,7 @@
       
       const actualCost = Math.floor(spec.cost * baseCostMult);
       if (budget >= actualCost) { 
+        if (baseCostMult < 1.0 && spec.type === 'base') stat_discount += (spec.cost - actualCost); // 할인액 누적
         budget -= actualCost; 
         towers.push(new Tower(pos.col, pos.row, selectedTower)); 
         towers.forEach(t => t.updateStats()); 
@@ -1226,9 +1297,13 @@
       executeThreshold = 0; deathExplosion = false; baseCostMult = 1.0; poisonSpread = false; critChance = 0;
       bossHitGold = 0; chainMultiplier = 1; chainRangeMult = 1.0; synergyDmgMult = 1.0; MAX_ENEMIES = 300;
       doubleCast = false; stunnedDmgMult = 1.0; cosmicRuin = false; giantSlayer = 0;
+      
+      activeAugments = []; // 통계 및 증강 완벽 초기화
+      stat_execute = 0; stat_explosion = 0; stat_discount = 0; stat_poisonSpread = 0;
+      stat_critDmg = 0; stat_gamble = 0; stat_bossGold = 0; stat_doubleCast = 0;
+      stat_freezeDmg = 0; stat_cosmicDmg = 0; stat_giantDmg = 0; stat_mansour = 0;
 
-      updateUI(); 
-      renderSidebarAndModals(); 
+      updateUI(); renderSidebarAndModals(); 
       gameState = 1; requestAnimationFrame(gameLoop);
     };
 
@@ -1281,7 +1356,10 @@
           if (deathExplosion && Math.random() < 0.3) {
               if(highQuality) shockwaves.push(new Shockwave(enemies[i].x, enemies[i].y, 100, "#e74c3c"));
               enemies.forEach(e => {
-                  if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 100) e.takeDamage(100, true);
+                  if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 100) {
+                      e.takeDamage(100, true);
+                      stat_explosion += 100; // 폭발 딜 누적
+                  }
               });
               floatingTexts.push(new FloatingText(enemies[i].x, enemies[i].y - 20, "연쇄폭발!", "#e74c3c", true, 30));
           }
@@ -1290,6 +1368,7 @@
               const spreadDmg = enemies[i].poisonDmg;
               enemies.forEach(e => {
                   if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 120) {
+                      if(e.poisonTimer <= 0) stat_poisonSpread++; // 신규 전염 횟수
                       e.poisonTimer = 180; e.poisonDmg = spreadDmg;
                   }
               });
@@ -1314,6 +1393,7 @@
               if (enemies.length === 0) break;
               const target = enemies[Math.floor(Math.random() * enemies.length)];
               target.takeDamage(500, true, 60);
+              stat_cosmicDmg += 500; // 궤도 폭격 딜 누적
               if(highQuality) shockwaves.push(new Shockwave(target.x, target.y, 80, "#9b59b6"));
               floatingTexts.push(new FloatingText(target.x, target.y - 40, "🚀궤도 폭격!", "#9b59b6", true, 40));
               Sound.hit("MAX");
