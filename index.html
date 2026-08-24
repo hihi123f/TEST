@@ -443,6 +443,49 @@
     }
 
     let towers = []; let enemies = []; let projectiles = []; let particles = []; let floatingTexts = []; let shockwaves = [];
+    
+    // ⚡ [여기부터 추가!] 누락되었던 번개 배열 및 이펙트 클래스
+    let lightnings = [];
+
+    class HexParticle extends Particle {
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life / this.maxLife;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) { 
+          let angle = (i * Math.PI / 3) + (this.life * 0.2); 
+          let px = this.x + Math.cos(angle) * (4 + Math.random());
+          let py = this.y + Math.sin(angle) * (4 + Math.random());
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+      }
+    }
+
+    class LightningEffect {
+      constructor(x1, y1, x2, y2, color) {
+        this.life = 12; this.maxLife = 12; this.color = color;
+        this.points = [{x: x1, y: y1}];
+        const segments = 4; 
+        const dx = (x2 - x1) / segments; const dy = (y2 - y1) / segments;
+        for(let i=1; i<segments; i++) {
+          this.points.push({ x: x1 + dx * i + (Math.random() - 0.5) * 30, y: y1 + dy * i + (Math.random() - 0.5) * 30 });
+        }
+        this.points.push({x: x2, y: y2});
+      }
+      update() { this.life--; return this.life <= 0; }
+      draw() {
+        ctx.save();
+        ctx.shadowBlur = 15; ctx.shadowColor = this.color; 
+        ctx.globalAlpha = this.life / this.maxLife;
+        ctx.beginPath(); ctx.moveTo(this.points[0].x, this.points[0].y);
+        for(let i=1; i<this.points.length; i++) ctx.lineTo(this.points[i].x, this.points[i].y);
+        ctx.lineWidth = 3; ctx.strokeStyle = this.color; ctx.stroke(); 
+        ctx.lineWidth = 1; ctx.strokeStyle = "#fff"; ctx.stroke(); 
+        ctx.restore();
+      }
+    }
+    // ⚡ [여기까지 추가 끝!]
 
     class ErrorEnemy {
       constructor(tier, isBoss = false) {
