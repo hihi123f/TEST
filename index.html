@@ -1407,7 +1407,6 @@ function gameLoop(timestamp) {
       ctx.fillStyle = bsodFlash > 0 ? "#0984e3" : dim.bg; ctx.fillRect(0, 0, 880, 490); 
       if(bsodFlash > 0) bsodFlash--;
       
-      // ... (위쪽 생략) ...
       drawExcelGrid(dim);
 
       // 🎯 [추가됨] 15, 30, 45... 티어 진입 시 보스 확정 스폰!
@@ -1446,20 +1445,54 @@ function gameLoop(timestamp) {
         }
       }
 
-      // 적 업데이트 및 처치(분열/보스 처치) 로직
+      // 🎯 [우주적 파멸] 5초(300프레임)마다 무작위 궤도 폭격
+      if (globalCosmicRuin && frame % 300 === 0 && enemies.length > 0) {
+        Sound.hit("MAX", true);
+        for(let k=0; k<3; k++) {
+          if(enemies.length === 0) break;
+          let target = enemies[Math.floor(Math.random() * enemies.length)];
+          if (highQuality) lightnings.push(new LightningEffect(target.x, target.y - 500, target.x, target.y, "#8e44ad"));
+          
+          target.takeDamage(500, true, 60);
+          if (highQuality) shockwaves.push(new Shockwave(target.x, target.y, 150, "#8e44ad"));
+          
+          enemies.forEach(e => {
+            if(e !== target && Math.hypot(e.x - target.x, e.y - target.y) < 150) e.takeDamage(250, true, 60);
+          });
+        }
+        floatingTexts.push(new FloatingText(880/2, 490/2, "우주적 파멸 발동!", "#8e44ad", true, 60));
+      }
+
+      // 적 업데이트 및 처치(분열/보스 처치/연쇄반응/맹독전염) 로직
       for (let i = enemies.length - 1; i >= 0; i--) {
         enemies[i].update();
         if (enemies[i].hp <= 0) {
           budget += enemies[i].reward;
           
-          // 🎯 [신규] 분열형(SPILL) 처치 시 찌꺼기 2마리 즉시 소환
+          // 🎯 [연쇄 반응] 사망 시 30% 확률 광역 폭발
+          if (globalDeathExplosion && Math.random() < 0.3) {
+            if(highQuality) shockwaves.push(new Shockwave(enemies[i].x, enemies[i].y, 100, "#e74c3c"));
+            Sound.hit("VLOOKUP");
+            enemies.forEach(e => {
+              if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 100) e.takeDamage(100, true);
+            });
+            floatingTexts.push(new FloatingText(enemies[i].x, enemies[i].y, "💥펑!", "#e74c3c", true, 30));
+          }
+
+          // 🎯 [맹독 확산] 맹독 상태로 사망 시 전염
+          if (globalPoisonSpread && enemies[i].poisonTimer > 0) {
+            enemies.forEach(e => {
+              if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 120) {
+                e.poisonTimer = enemies[i].poisonTimer; e.poisonDmg = enemies[i].poisonDmg;
+              }
+            });
+            if(highQuality) shockwaves.push(new Shockwave(enemies[i].x, enemies[i].y, 120, "rgba(46, 204, 113, 0.4)"));
+          }
+
           if (enemies[i].type === "SPILL" && !enemies[i].isSub) {
             for (let j = 1; j <= 2; j++) {
               let sub = new ErrorEnemy(currentTier, false);
-              
-              // 👇 이 줄을 아래처럼 바꿔주세요!
               sub.type = "NORMAL"; sub.tag = "#FRAGMENT!"; sub.isSub = true; 
-              
               sub.scale = enemies[i].baseScale * 0.65;
               sub.maxHp = enemies[i].maxHp * 0.3; sub.hp = sub.maxHp;
               sub.progress = Math.max(0, enemies[i].progress - 0.015 * j); 
@@ -1474,7 +1507,7 @@ function gameLoop(timestamp) {
             addShake(15); Sound.hit("MAX"); 
             if(highQuality) for(let p=0; p<50; p++) particles.push(new Particle(enemies[i].x, enemies[i].y, "#ffeb3b", 7)); 
             floatingTexts.push(new FloatingText(enemies[i].x, enemies[i].y - 30, "BOSS DEFEATED!", "#ffeb3b", true, 50)); 
-            showAugments(); // 🎯 보스 잡으면 확정 증강 선택창 오픈!
+            showAugments(); 
           }
           enemies.splice(i, 1); continue;
         }
