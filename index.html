@@ -374,16 +374,18 @@
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
     const TOWER_SPECS = {
-      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 40, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
-      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 10, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
-      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 60, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
-      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 110, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
-      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
-      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 1.5, time: 420 }, desc:"적에게 7초간 서서히 피를 말리는 맹독 부여", unlockTier: 8 },
-      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
+      // ⬇️ [너프됨] 초반 기본 타워 스탯 (공격력 대폭감소, 공속 대폭감소, 사거리 소폭감소)
+      SUM: { type:"base", cost: 40, range: 100, rate: 24, dmg: 20, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
+      IFERROR: { type:"base", cost: 60, range: 90, rate: 5, dmg: 5, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
+      MIN: { type:"base", cost: 70, range: 90, rate: 65, dmg: 35, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
+      VLOOKUP: { type:"base", cost: 90, range: 130, rate: 75, dmg: 60, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
+      AVERAGE: { type:"base", cost: 100, range: 110, rate: 55, dmg: 20, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
+      RATE: { type:"base", cost: 80, range: 105, rate: 45, dmg: 15, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 1.0, time: 420 }, desc:"적에게 7초간 서서히 피를 말리는 맹독 부여", unlockTier: 8 },
+      POWER: { type:"base", cost: 100, range: 100, rate: 60, dmg: 40, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
       PIVOT: { type:"epic", req: ["AVERAGE", "RATE"], range: 170, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"인접 아군 타워 공격력 대폭(+50%~) 및 사거리 증가 오라" },
-      MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
+      MAX: { type:"base", cost: 130, range: 220, rate: 110, dmg: 200, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
       
+      // ⬇️ 상위 조합(에픽, 고대, 히든) 타워 스탯은 기존 유지 (조합 메리트 극대화)
       SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 200, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
       COUNTIFS: { type:"epic", req: ["MAX", "SUM"], range: 180, rate: 4, dmg: 80, color: "#1abc9c", name: "CNTIFS", desc:"초고속 연사 기관총" },
       INDEXMATCH: { type:"epic", req: ["VLOOKUP", "MAX"], range: 260, rate: 65, dmg: 900, color: "#f1c40f", name: "IDXMAT", splash: 120, desc:"장거리 넓은 범위 폭발" },
