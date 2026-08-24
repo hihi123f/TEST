@@ -206,7 +206,12 @@
 
         <div id="game-over-overlay" class="overlay" style="display: none;">
           <h1 id="go-title">#STACK_OVERFLOW!</h1>
-          <div id="final-score" style="color:#fff; margin-bottom: 25px; font-size: 18px;"></div>
+          <div id="final-score" style="color:#fff; margin-bottom: 15px; font-size: 18px; text-align:center;"></div>
+          
+          <!-- 🎯 [추가됨] 데미지 미터기 (DPS Graph) 영역 -->
+          <div id="damage-meter-container" style="width: 350px; max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #555;">
+          </div>
+          
           <button class="btn-action" onclick="restartGame()">↺ 다시 시작</button>
         </div>
         
@@ -317,17 +322,27 @@
     const CELL_W = 55; const CELL_H = 30; const HEADER_W = 40; const HEADER_H = 25;
     const COLS = 15; const ROWS = 15; 
     
-    // --- 시스템 및 증강 전역 변수 ---
+// --- 시스템 및 증강 전역 변수 ---
     let MAX_ENEMIES = 300;
     let globalDmgMult = 1.0; let globalCostMult = 1.0; let globalRateMult = 1.0; let globalRangeMult = 1.0; let refundRate = 0.7;
     let executeThreshold = 0; let deathExplosion = false; let baseCostMult = 1.0; let poisonSpread = false; let critChance = 0;
     let bossHitGold = 0; let chainMultiplier = 1; let chainRangeMult = 1.0; let synergyDmgMult = 1.0;
     let doubleCast = false; let stunnedDmgMult = 1.0; let cosmicRuin = false; let giantSlayer = 0;
 
+    // 🎯 [추가됨] 리롤 횟수 및 데미지 미터기 전역 변수
+    let rerolls = 2; 
+    let globalDamageStats = {};
+
     let gameState = 0; let budget = 300; let selectedTower = "SUM";
     let gameTime = 0; let frame = 0; let screenShake = 0; let currentTier = 1; let currentDimName = "EXCEL"; let bsodFlash = 0;
 
     let towers = []; let enemies = []; let projectiles = []; let particles = []; let floatingTexts = []; let shockwaves = []; let lightnings = [];
+
+    // 🎯 [추가됨] 증강 통계용 전역 변수 모음
+    let activeAugments = []; 
+    let stat_execute = 0; let stat_explosion = 0; let stat_discount = 0; let stat_poisonSpread = 0;
+    let stat_critDmg = 0; let stat_gamble = 0; let stat_bossGold = 0; let stat_doubleCast = 0;
+    let stat_freezeDmg = 0; let stat_cosmicDmg = 0; let stat_giantDmg = 0; let stat_mansour = 0;
 
     const dpr = window.devicePixelRatio || 1;
     canvas.style.width = "880px"; canvas.style.height = "490px";
@@ -510,13 +525,19 @@
     function showAugments() {
       gameState = 3; 
       const choices = [];
-      while(choices.length < 3) {
+      
+      // 🎯 [수정됨] 이미 획득한 증강은 필터링하여 중복 획득 방지
+      const availableAugments = AUGMENTS.filter(a => !activeAugments.some(active => active.name === a.name));
+      
+      while(choices.length < 3 && choices.length < availableAugments.length) {
          const r = Math.random();
          const targetTier = r < 0.05 ? "Prismatic" : (r < 0.35 ? "Gold" : "Silver");
-         const pool = AUGMENTS.filter(a => a.tier === targetTier);
-         const aug = pool[Math.floor(Math.random() * pool.length)];
+         const pool = availableAugments.filter(a => a.tier === targetTier);
+         const finalPool = pool.length > 0 ? pool : availableAugments; // 티어가 비었으면 남은 것 중 무작위
+         const aug = finalPool[Math.floor(Math.random() * finalPool.length)];
          if(!choices.includes(aug)) choices.push(aug);
       }
+      
       const container = document.getElementById("augment-cards-container");
       container.innerHTML = "";
       choices.forEach(aug => {
@@ -525,7 +546,7 @@
          card.innerHTML = `<div class="aug-tier">${aug.tier.toUpperCase()} 증강</div><div class="aug-name">${aug.name}</div><div class="aug-desc">${aug.desc}</div>`;
          card.onclick = () => {
              aug.effect();
-             activeAugments.push(aug); // 🎯 증강 목록에 추가
+             activeAugments.push(aug); 
              towers.forEach(t => t.updateStats()); 
              document.getElementById("augment-overlay").style.display = "none";
              floatingTexts.push(new FloatingText(880/2, 490/2, `[${aug.name}] 적용 완료!`, "#00ff00", true, 80));
@@ -534,7 +555,29 @@
          };
          container.appendChild(card);
       });
-      document.getElementById("augment-overlay").style.display = "flex";
+
+      // 🎯 [추가됨] 증강 리롤(Reroll) 버튼 생성
+      const overlay = document.getElementById("augment-overlay");
+      let rerollBtn = document.getElementById("reroll-btn");
+      if (!rerollBtn) {
+          rerollBtn = document.createElement("button");
+          rerollBtn.id = "reroll-btn";
+          rerollBtn.className = "btn-action";
+          rerollBtn.style.marginTop = "30px";
+          rerollBtn.style.backgroundColor = "#e67e22";
+          overlay.appendChild(rerollBtn);
+      }
+      rerollBtn.innerText = `🔄 다른 증강 보기 (남은 횟수: ${rerolls})`;
+      rerollBtn.onclick = () => {
+          if (rerolls > 0) {
+              rerolls--;
+              Sound.hitShield(); // 리롤 효과음
+              showAugments(); 
+          }
+      };
+      rerollBtn.style.display = rerolls > 0 ? "block" : "none";
+
+      overlay.style.display = "flex";
     }
 
     class ErrorEnemy {
@@ -817,9 +860,7 @@
         if (budget >= this.upgradeCost) {
           budget -= this.upgradeCost; this.totalSpent += this.upgradeCost; 
           this.level++; 
-          
           towers.forEach(t => t.updateStats()); 
-          
           Sound.upgrade();
           floatingTexts.push(new FloatingText(this.x, this.y - 20, "UP!", this.baseSpec.color, true, 20)); return true;
         } return false;
@@ -845,9 +886,18 @@
           this.laserTargets = targets;
           if (this.cooldown <= 0) {
             targets.forEach(t => {
-              t.takeDamage(this.dmg, this.baseSpec.pierce, this.baseSpec.stun || 0); this.totalDamageDealt += this.dmg; 
+              t.takeDamage(this.dmg, this.baseSpec.pierce, this.baseSpec.stun || 0); 
+              this.totalDamageDealt += this.dmg; 
+              globalDamageStats[this.baseSpec.name] = (globalDamageStats[this.baseSpec.name] || 0) + this.dmg; // 🎯 미터기 기록
+              
               if (this.baseSpec.splash) {
-                enemies.forEach(e => { if (e !== t && Math.hypot(e.x - t.x, e.y - t.y) <= this.baseSpec.splash) { e.takeDamage(this.dmg * 0.5, true); this.totalDamageDealt += (this.dmg * 0.5); } });
+                enemies.forEach(e => { 
+                  if (e !== t && Math.hypot(e.x - t.x, e.y - t.y) <= this.baseSpec.splash) { 
+                    e.takeDamage(this.dmg * 0.5, true); 
+                    this.totalDamageDealt += (this.dmg * 0.5); 
+                    globalDamageStats[this.baseSpec.name] = (globalDamageStats[this.baseSpec.name] || 0) + (this.dmg * 0.5); // 🎯 미터기 기록
+                  } 
+                });
                 if(highQuality) shockwaves.push(new Shockwave(t.x, t.y, this.baseSpec.splash, this.baseSpec.color));
               }
               t.currentSpeed = t.speed * Math.max(0.1, 0.4 - (this.level * 0.02)); t.slowTimer = 10; 
@@ -862,7 +912,7 @@
               if (doubleCast) {
                   const p2 = new Projectile(this.x + (Math.random()-0.5)*15, this.y + (Math.random()-0.5)*15, t, this);
                   projectiles.push(p2);
-                  stat_doubleCast++; // 추가 발사 카운트
+                  stat_doubleCast++;
               }
             });
             this.cooldown = this.rate; this.recoil = 5; Sound.shoot(this.type);
@@ -917,6 +967,7 @@
               const actualDmg = this.tower.dmg * falloff;
               e.takeDamage(actualDmg, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec); 
               this.tower.totalDamageDealt += actualDmg;
+              globalDamageStats[this.tower.baseSpec.name] = (globalDamageStats[this.tower.baseSpec.name] || 0) + actualDmg; // 🎯 미터기 기록
             } 
           });
           if(highQuality) for (let i = 0; i < 4; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 4));
@@ -924,6 +975,8 @@
           Sound.hit(this.tower.type, this.target.isBoss); 
           this.target.takeDamage(this.tower.dmg, this.tower.baseSpec.pierce, this.tower.baseSpec.stun || 0, this.tower.baseSpec.poisonSpec);
           this.tower.totalDamageDealt += this.tower.dmg; 
+          globalDamageStats[this.tower.baseSpec.name] = (globalDamageStats[this.tower.baseSpec.name] || 0) + this.tower.dmg; // 🎯 미터기 기록
+          
           if(highQuality) for (let i = 0; i < 2; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 3));
         }
 
@@ -1298,16 +1351,45 @@
       bossHitGold = 0; chainMultiplier = 1; chainRangeMult = 1.0; synergyDmgMult = 1.0; MAX_ENEMIES = 300;
       doubleCast = false; stunnedDmgMult = 1.0; cosmicRuin = false; giantSlayer = 0;
       
-      activeAugments = []; // 통계 및 증강 완벽 초기화
+      activeAugments = []; 
       stat_execute = 0; stat_explosion = 0; stat_discount = 0; stat_poisonSpread = 0;
       stat_critDmg = 0; stat_gamble = 0; stat_bossGold = 0; stat_doubleCast = 0;
       stat_freezeDmg = 0; stat_cosmicDmg = 0; stat_giantDmg = 0; stat_mansour = 0;
+      
+      // 🎯 [추가됨] 리롤 횟수 및 데미지 미터기 초기화
+      rerolls = 2;
+      globalDamageStats = {};
 
       updateUI(); renderSidebarAndModals(); 
       gameState = 1; requestAnimationFrame(gameLoop);
     };
 
     let lastTimestamp = 0; 
+
+    // 🎯 [추가됨] 데미지 미터기 렌더링 함수
+    function renderDamageMeter() {
+        const container = document.getElementById("damage-meter-container");
+        const sortedStats = Object.entries(globalDamageStats).sort((a, b) => b[1] - a[1]);
+        const maxDmg = sortedStats.length > 0 ? sortedStats[0][1] : 1;
+        
+        let html = `<h3 style="color:#f1c40f; margin:0 0 15px 0; font-size:15px; text-align:center;">📊 타워별 누적 데미지 (DPS)</h3>`;
+        if (sortedStats.length === 0) html += `<div style="text-align:center; color:#ccc; font-size: 13px;">기록된 딜량이 없습니다.</div>`;
+        
+        sortedStats.forEach(([name, dmg]) => {
+            const percent = (dmg / maxDmg) * 100;
+            html += `
+            <div style="margin-bottom: 10px;">
+                <div style="display:flex; justify-content:space-between; color:#fff; font-size:12px; margin-bottom:4px;">
+                    <strong>${name}</strong>
+                    <span>${Math.round(dmg).toLocaleString()}</span>
+                </div>
+                <div style="width: 100%; background: #333; height: 10px; border-radius: 5px; overflow:hidden;">
+                    <div style="width: ${percent}%; background: linear-gradient(90deg, #e74c3c, #f1c40f); height: 100%; border-radius: 5px;"></div>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
 
     function gameLoop(timestamp) {
       if (gameState !== 1) return; 
@@ -1343,6 +1425,10 @@
 
           document.getElementById("go-title").innerText = currentDimName === "DEV" ? "BSOD: CRITICAL_PROCESS_DIED" : "#STACK_OVERFLOW!";
           document.getElementById("final-score").innerHTML = `최종 티어: ${currentTier} (${currentDimName}) | 버틴 시간: ${Math.floor(gameTime/60)}초<br><br><span style="color:#f1c40f">🏆 나의 최고 기록: 티어 ${bestTier}</span>`;
+          
+          // 🎯 데미지 미터기 화면에 호출
+          renderDamageMeter();
+          
           document.getElementById("game-over-overlay").style.display = "flex";
           ctx.restore(); return;
         }
@@ -1358,7 +1444,7 @@
               enemies.forEach(e => {
                   if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 100) {
                       e.takeDamage(100, true);
-                      stat_explosion += 100; // 폭발 딜 누적
+                      stat_explosion += 100;
                   }
               });
               floatingTexts.push(new FloatingText(enemies[i].x, enemies[i].y - 20, "연쇄폭발!", "#e74c3c", true, 30));
@@ -1368,7 +1454,7 @@
               const spreadDmg = enemies[i].poisonDmg;
               enemies.forEach(e => {
                   if (e !== enemies[i] && Math.hypot(e.x - enemies[i].x, e.y - enemies[i].y) < 120) {
-                      if(e.poisonTimer <= 0) stat_poisonSpread++; // 신규 전염 횟수
+                      if(e.poisonTimer <= 0) stat_poisonSpread++;
                       e.poisonTimer = 180; e.poisonDmg = spreadDmg;
                   }
               });
@@ -1393,7 +1479,7 @@
               if (enemies.length === 0) break;
               const target = enemies[Math.floor(Math.random() * enemies.length)];
               target.takeDamage(500, true, 60);
-              stat_cosmicDmg += 500; // 궤도 폭격 딜 누적
+              stat_cosmicDmg += 500;
               if(highQuality) shockwaves.push(new Shockwave(target.x, target.y, 80, "#9b59b6"));
               floatingTexts.push(new FloatingText(target.x, target.y - 40, "🚀궤도 폭격!", "#9b59b6", true, 40));
               Sound.hit("MAX");
