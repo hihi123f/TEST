@@ -135,6 +135,10 @@
       <div class="stat-badge">🚦 트래픽: <span id="enemy-count" class="traffic-green">0</span> / 300</div>
       <div class="stat-badge">💰 예산: $<span id="budget">300</span></div>
       <div class="stat-badge" id="tier-badge">📈 티어: 1 (EXCEL)</div>
+      
+      <!-- 🎯 [추가됨] 로컬스토리지 최고 기록 뱃지 -->
+      <div class="stat-badge" style="color:#d35400;">🏆 최고 기록: <span id="best-tier-badge">1</span></div>
+      
       <div style="margin-left: auto; display:flex;">
         <button class="btn-toolbar btn-pause" id="pause-btn" onclick="togglePause()">⏸️ 일시정지</button>
         <button class="btn-toolbar btn-full" onclick="goFullscreen()">📱 앱모드</button>
@@ -210,9 +214,14 @@
   </div>
 
   <script>
-    let highQuality = true;
+    // 🎯 [수정됨] 로컬스토리지 연동 (품질 설정, 최고 기록, 도감)
+    let highQuality = localStorage.getItem("md_quality") === "false" ? false : true;
+    let bestTier = parseInt(localStorage.getItem("md_best_tier")) || 1;
+    let discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
+
     function toggleQuality() {
       highQuality = !highQuality;
+      localStorage.setItem("md_quality", highQuality); // 상태 저장
       const btn = document.getElementById("quality-btn");
       btn.innerText = highQuality ? "⚙️ 품질: 높음" : "⚙️ 품질: 낮음";
       btn.style.background = highQuality ? "#16a085" : "#7f8c8d";
@@ -1252,8 +1261,16 @@
         enemies.push(new ErrorEnemy(currentTier, false));
         if (enemies.length >= MAX_ENEMIES) {
           gameState = 2; Sound.hit("MAX", true);
+          
+          // 🎯 [추가됨] 로컬스토리지 최고 기록 갱신 로직
+          if (currentTier > bestTier) {
+              bestTier = currentTier;
+              localStorage.setItem("md_best_tier", bestTier);
+              document.getElementById("best-tier-badge").innerText = bestTier;
+          }
+
           document.getElementById("go-title").innerText = currentDimName === "DEV" ? "BSOD: CRITICAL_PROCESS_DIED" : "#STACK_OVERFLOW!";
-          document.getElementById("final-score").innerText = `최종 티어: ${currentTier} (${currentDimName}) | 버틴 시간: ${Math.floor(gameTime/60)}초`;
+          document.getElementById("final-score").innerHTML = `최종 티어: ${currentTier} (${currentDimName}) | 버틴 시간: ${Math.floor(gameTime/60)}초<br><br><span style="color:#f1c40f">🏆 나의 최고 기록: 티어 ${bestTier}</span>`;
           document.getElementById("game-over-overlay").style.display = "flex";
           ctx.restore(); return;
         }
