@@ -586,30 +586,7 @@
       updateUI(); gameState = 1;
     };
 
-    window.startGame = function() { 
-      goFullscreen(); Sound.init(); document.getElementById("start-overlay").style.display = "none"; 
-      gameState = 1; requestAnimationFrame(gameLoop); 
-    };
-
-    window.restartGame = function() {
-      Sound.init(); document.getElementById("game-over-overlay").style.display = "none";
-      towers = []; enemies = []; projectiles = []; particles = []; floatingTexts = []; shockwaves = []; lightnings = [];
-      budget = 300; gameTime = 0; frame = 0; screenShake = 0; currentTier = 1; currentDimName = "EXCEL"; lastBossTier = 0;
-      
-      // 🎯 재시작 시 기믹 몽땅 초기화
-      globalDmgMult=1.0; globalCostMult=1.0; globalRateMult=1.0; globalRangeMult=1.0; refundRate=0.7; MAX_ENEMIES=300;
-      globalBaseCostMult=1.0; globalSynergyDmgMult=1.0; globalExecute=false; globalDeathExplosion=false; globalPoisonSpread=false;
-      globalCritChance=0; globalChainBuff=false; globalBossExtortion=false; globalDoubleCast=false; globalStunDmgMult=1.0; globalCosmicRuin=false; globalGiantSlayer=false;
-      discoveredTowers = new Set(["SUM", "IFERROR", "MIN"]);
-
-      document.documentElement.style.setProperty('--bar-color', '#107c41');
-      document.getElementById('win-title').innerText = "📊 Multiverse_Defense.xlsx - Ultimate Edition";
-      updateUI(); gameState = 1;
-    };
-
     let towers = []; let enemies = []; let projectiles = []; let particles = []; let floatingTexts = []; let shockwaves = [];
-    
-    // ⚡ [여기부터 추가!] 누락되었던 번개 배열 및 이펙트 클래스
     let lightnings = [];
 
     
@@ -1159,71 +1136,7 @@ if (this.chainCount > 0) {
 
     canvas.addEventListener("pointerleave", () => { hoverCol = -1; hoverRow = -1; });
 
-    // 🎯 [수정됨] 마우스를 뗐을 때(클릭) 이벤트
-    canvas.addEventListener("pointerup", (e) => {
-      // 꾹 누르기(long press) 관련 코드는 이제 불필요하므로 지우거나 무시합니다.
-      if (gameState !== 1 || e.button === 2) return;
-      Sound.init();
-
-      const pos = getGridPos(e); if (!pos.isValid || pos.col >= COLS || pos.row >= ROWS) return;
-      const existing = towers.find(t => t.col === pos.col && t.row === pos.row);
-      const spec = TOWER_SPECS[selectedTower];
-
-      // 🎯 [추가됨] 시너지 조합용 클릭인지, 단순 모달 오픈용 클릭인지 구분
-      const isSynergyIngredient = spec.req && existing && spec.req.includes(existing.type);
-      
-      if (existing && !isSynergyIngredient) {
-        openTowerModal(existing); // 조합 재료를 클릭한 게 아니라면 무조건 모달 열기!
-        return;
-      }
-      
-      // 빈 타일을 클릭했다면 열려있는 모달 닫기
-      if (!existing) {
-        closeTowerModal();
-      }
-
-      // --- 이하 기존 조합 및 설치 로직 유지 ---
-      if (spec.req) {
-        const requiredTypes = spec.req.slice(); const towersToRemove = [];
-        if (existing && requiredTypes.includes(existing.type)) { towersToRemove.push(existing); requiredTypes.splice(requiredTypes.indexOf(existing.type), 1); }
-        for (let reqType of requiredTypes) {
-          const found = towers.find(t => t.type === reqType && !towersToRemove.includes(t));
-          if (found) towersToRemove.push(found);
-          else { floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H, "재료 부족!", "#e74c3c", true, 30)); Sound.error(); return; }
-        }
-        let refundGold = 0;
-        towersToRemove.forEach(t => {
-          refundGold += t.totalSpent * 0.8; 
-          const idx = towers.indexOf(t); if(idx > -1) towers.splice(idx, 1);
-          if(highQuality) for(let i=0; i<8; i++) particles.push(new Particle(t.x, t.y, "#888", 3));
-        });
-        // ... (기존 조합 시 환불 로직 유지) ...
-        refundGold = Math.floor(refundGold); budget += refundGold;
-        
-        towers.push(new Tower(pos.col, pos.row, selectedTower)); 
-        Sound.synergy();
-
-        // 🎯 [추가됨] 처음으로 조합해 본 타워라면 도감에 등록하고 모달 갱신!
-        if (!discoveredTowers.has(selectedTower)) {
-          discoveredTowers.add(selectedTower);
-          renderRecipeModal(); // 도감 책에 내용이 적힙니다!
-          floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 30, `도감 등록 완료!`, "#3498db", true, 60));
-        }
-
-        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
-        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
-        updateUI(); return;
-      }
-        towers.push(new Tower(pos.col, pos.row, selectedTower)); Sound.synergy();
-        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
-        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
-        updateUI(); return;
-      }
-      
-      // if (existing) { existing.upgrade(); updateUI(); return; } // 🚨 기존의 즉시 업그레이드 코드는 삭제됨!
-      
-      if (budget >= spec.cost) { budget -= spec.cost; towers.push(new Tower(pos.col, pos.row, selectedTower)); updateUI(); }
-    });
+    if (budget >= spec.cost)
 
 
     // ----------------------------------------------------
@@ -1409,18 +1322,16 @@ function gameLoop(timestamp) {
       
       drawExcelGrid(dim);
 
-      // 🎯 [추가됨] 15, 30, 45... 티어 진입 시 보스 확정 스폰!
+      // 🎯 [보스 확정 스폰]
       if (currentTier % 15 === 0 && lastBossTier !== currentTier) {
-        enemies.push(new ErrorEnemy(currentTier, true)); // 보스 스폰!
-        lastBossTier = currentTier; // 중복 스폰 방지
+        enemies.push(new ErrorEnemy(currentTier, true));
+        lastBossTier = currentTier; 
       }
 
-      // 👇 여기서부터 수정! 보스가 살아있는지 확인합니다.
+      // 🎯 [일반몹 스폰 로직 하나로 합침!]
       const isBossAlive = enemies.some(e => e.isBoss);
-
       const spawnInterval = Math.max(15, 60 - currentTier * 3);
       
-      // 👇 보스가 없을 때(!isBossAlive)만 일반 몹을 스폰합니다!
       if (!isBossAlive && frame % spawnInterval === 0) {
         enemies.push(new ErrorEnemy(currentTier, false));
         if (enemies.length >= MAX_ENEMIES) {
@@ -1431,6 +1342,8 @@ function gameLoop(timestamp) {
           ctx.restore(); requestAnimationFrame(gameLoop); return;
         }
       }
+
+      // 🎯 [우주적 파멸] 5초(300프레임)마다 무작위 궤도 폭격
 
       // 기존의 쉴 새 없는 끝없는 스폰 로직 그대로 유지
       const spawnInterval = Math.max(15, 60 - currentTier * 3);
