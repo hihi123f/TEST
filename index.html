@@ -1149,61 +1149,7 @@ function gameLoop(timestamp) {
 }
     
     window.onload = () => { initUI(); drawExcelGrid(DIMENSIONS.EXCEL); };
-    let clickedTowerObj = null; // 현재 클릭한 타워 정보 저장
-
-function openTowerModal(tower) {
-  clickedTowerObj = tower;
-  const modal = document.getElementById("tower-modal");
-  document.getElementById("tm-title").innerText = tower.displayName;
-  document.getElementById("tm-title").style.color = tower.baseSpec.color;
-  
-  const refund = Math.floor(tower.totalSpent * refundRate);
-  
-  document.getElementById("tm-stats").innerHTML = `
-    ⚔️ <b>공격력:</b> ${Math.round(tower.dmg)}<br/>
-    🎯 <b>누적 딜량:</b> <span style="color:#d35400; font-weight:bold;">${Math.round(tower.totalDamageDealt).toLocaleString()}</span><br/>
-    📡 <b>사거리:</b> ${Math.round(tower.range)}<br/><br/>
-    💰 <b>투입 예산:</b> $${tower.totalSpent}
-  `;
-  
-  document.getElementById("tm-upgrade").innerText = `업그레이드 ($${tower.upgradeCost})`;
-  document.getElementById("tm-sell").innerText = `판매 (+$${refund})`;
-  
-  modal.style.display = "block";
-}
-
-function closeTowerModal() {
-  document.getElementById("tower-modal").style.display = "none";
-  clickedTowerObj = null;
-}
-
-// 모달 내 업그레이드 버튼 클릭 이벤트
-document.getElementById("tm-upgrade").addEventListener("click", () => {
-  if (clickedTowerObj && clickedTowerObj.upgrade()) {
-    updateUI();
-    openTowerModal(clickedTowerObj); // UI 갱신을 위해 모달 다시 그리기
-  } else {
-    Sound.error();
-    floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 20, "예산 부족!", "#e74c3c", true, 30));
-  }
-});
-
-// 모달 내 판매 버튼 클릭 이벤트
-document.getElementById("tm-sell").addEventListener("click", () => {
-  if (clickedTowerObj) {
-    const refund = Math.floor(clickedTowerObj.totalSpent * refundRate); 
-    budget += refund; 
     
-    const idx = towers.indexOf(clickedTowerObj);
-    if (idx > -1) towers.splice(idx, 1);
-    
-    if(highQuality) { for(let i=0; i<10; i++) particles.push(new Particle(clickedTowerObj.x, clickedTowerObj.y, "#e74c3c", 4)); }
-    floatingTexts.push(new FloatingText(clickedTowerObj.x, clickedTowerObj.y - 15, `판매 (+$${refund})`, "#e74c3c", true, 40));
-    Sound.error(); 
-    updateUI();
-    closeTowerModal();
-  }
-});
   </script>
 </body>
 </html>
