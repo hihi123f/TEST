@@ -299,14 +299,15 @@
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
     const TOWER_SPECS = {
-      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 40, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격" },
-      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 10, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤" },
-      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 60, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)" },
-      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 110, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격" },
-      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격" },
-      MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격" },
-      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 2, time: 180 }, desc:"적에게 3초간 지속 독 데미지" },
-      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개" },
+      // 🎯 [수정됨] 기본 타워들에 unlockTier(해금 티어) 추가
+      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 40, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
+      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 10, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
+      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 60, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
+      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 110, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 2 },
+      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 2 },
+      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 2, time: 180 }, desc:"적에게 3초간 지속 독 데미지", unlockTier: 3 },
+      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 4 },
+      MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 5 },
       
       SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 200, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
       COUNTIFS: { type:"epic", req: ["MAX", "SUM"], range: 180, rate: 4, dmg: 80, color: "#1abc9c", name: "CNTIFS", desc:"초고속 연사 기관총" },
@@ -330,30 +331,64 @@
       LAMBDA: { type:"hidden", req: ["VLOOKUP", "MAX", "IFERROR"], range: 260, rate: 5, dmg: 400, color: "#000", name: "LAMBDA", isBeam: true, splash: 120, pierce: true, desc:"[히든] 쉴드관통+슬로우+광역파괴 레이저" }
     };
 
-    function initUI() {
+    // 🎯 [추가됨] 영구 도감 시스템 (발견한 조합식 저장)
+    let discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
+
+    // 🎯 [수정됨] 동적 사이드바 및 모달 렌더링 함수
+    function renderSidebarAndModals() {
       const container = document.getElementById('tower-selection');
+      container.innerHTML = '';
       const baseRow = document.createElement('div'); baseRow.className = 'tower-row'; baseRow.innerHTML = `<div class="tower-row-title" style="color:#27ae60">기본 (1조합)</div>`;
       const epicRow = document.createElement('div'); epicRow.className = 'tower-row'; epicRow.innerHTML = `<div class="tower-row-title" style="color:var(--epic-color)">에픽 (2조합)</div>`;
       const ancRow = document.createElement('div'); ancRow.className = 'tower-row'; ancRow.innerHTML = `<div class="tower-row-title" style="color:var(--ancient-color)">고대/히든 (3조합)</div>`;
       
       let infoHTML = ''; let recipeHTML = '';
+      
       for (let key in TOWER_SPECS) {
         const t = TOWER_SPECS[key];
-        const btn = document.createElement('button'); btn.className = `tower-btn ${t.type} ${key==='SUM'?'active':''}`; btn.dataset.type = key;
-        let label = `=${t.name}`;
-        if(t.type === 'base') { label += ` ($${t.cost})`; baseRow.appendChild(btn); infoHTML += `<div class="modal-item"><div class="m-title" style="color:${t.color}">=${key}</div><div class="m-desc">${t.desc}</div></div>`; } 
-        else if (t.type === 'epic') { epicRow.appendChild(btn); } 
-        else if (t.type === 'ancient') { ancRow.appendChild(btn); } 
-        else if (t.type === 'hidden') { btn.className = `tower-btn hidden-t`; label = "=LAMBDA"; ancRow.appendChild(btn); }
-        btn.innerText = label;
-
-        if (t.req) { recipeHTML += `<div class="modal-item"><div class="m-title" style="color:${t.type==='hidden'?'#2c3e50':t.color}">=${key}</div><div class="m-sub">${t.req.join(' + ')}</div><div class="m-desc">${t.desc}</div></div>`; }
+        const btn = document.createElement('button'); 
+        btn.className = `tower-btn ${t.type} ${key===selectedTower?'active':''}`; 
+        btn.dataset.type = key;
+        
+        // 기본 상점 타워 로직 (티어별 해금)
+        if(t.type === 'base') { 
+          if (currentTier >= t.unlockTier) {
+            btn.innerText = `=${t.name} ($${t.cost})`; 
+            infoHTML += `<div class="modal-item"><div class="m-title" style="color:${t.color}">=${key}</div><div class="m-desc">${t.desc}</div></div>`; 
+          } else {
+            btn.innerText = `[T${t.unlockTier} 해금]`;
+            btn.classList.add('locked');
+            btn.style.opacity = '0.3';
+            btn.style.pointerEvents = 'none'; // 미해금 시 클릭 방지
+          }
+          baseRow.appendChild(btn); 
+        } 
+        // 상위 조합식 로직 (도감 발견 여부)
+        else {
+          const isDiscovered = discoveredRecipes.includes(key);
+          
+          if (t.type === 'epic') { epicRow.appendChild(btn); } 
+          else if (t.type === 'ancient') { ancRow.appendChild(btn); } 
+          else if (t.type === 'hidden') { btn.className = `tower-btn hidden-t ${key===selectedTower?'active':''}`; ancRow.appendChild(btn); }
+          
+          if (isDiscovered) {
+            btn.innerText = t.type === 'hidden' ? "=LAMBDA" : `=${t.name}`;
+            recipeHTML += `<div class="modal-item"><div class="m-title" style="color:${t.type==='hidden'?'#2c3e50':t.color}">=${key}</div><div class="m-sub">${t.req.join(' + ')}</div><div class="m-desc">${t.desc}</div></div>`;
+          } else {
+            btn.innerText = `???`;
+            const hiddenReqs = t.req.map(r => "???").join(" + ");
+            recipeHTML += `<div class="modal-item"><div class="m-title" style="color:#999">=???</div><div class="m-sub" style="color:#ccc">${hiddenReqs}</div><div class="m-desc" style="color:#999">아직 발견하지 못한 조합식입니다.</div></div>`;
+          }
+        }
       }
       container.appendChild(baseRow); container.appendChild(epicRow); container.appendChild(ancRow);
       document.getElementById('info-content').innerHTML = infoHTML; document.getElementById('recipe-content').innerHTML = recipeHTML;
 
+      // 잠기지 않은 버튼에만 클릭 이벤트 부여
       document.querySelectorAll(".tower-btn").forEach(btn => {
-        btn.addEventListener("pointerdown", () => { Sound.init(); document.querySelectorAll(".tower-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); selectedTower = btn.dataset.type; });
+        if (!btn.classList.contains("locked")) {
+          btn.addEventListener("pointerdown", () => { Sound.init(); document.querySelectorAll(".tower-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); selectedTower = btn.dataset.type; });
+        }
       });
       resizeWindow();
     }
@@ -944,6 +979,7 @@
         closeTowerModal();
       }
 
+      // --- 이하 기존 조합 및 설치 로직 유지 ---
       if (spec.req) {
         const requiredTypes = spec.req.slice(); const towersToRemove = [];
         if (existing && requiredTypes.includes(existing.type)) { towersToRemove.push(existing); requiredTypes.splice(requiredTypes.indexOf(existing.type), 1); }
@@ -961,7 +997,16 @@
         refundGold = Math.floor(refundGold); budget += refundGold;
         towers.push(new Tower(pos.col, pos.row, selectedTower)); Sound.synergy();
         floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
-        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
+        
+        // 🎯 [추가됨] 도감 시스템: 처음 발견한 조합이면 로컬스토리지에 저장 및 UI 갱신
+        if (!discoveredRecipes.includes(selectedTower)) {
+          discoveredRecipes.push(selectedTower);
+          localStorage.setItem("multiverse_recipes", JSON.stringify(discoveredRecipes));
+          floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 35, "NEW RECIPE!", "#00ffff", true, 60));
+          renderSidebarAndModals(); // 사이드바 및 도감 모달 즉시 갱신
+        } else {
+          floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
+        }
         updateUI(); return;
       }
       
@@ -1051,11 +1096,17 @@
         if (currentTier % 15 === 0) {
           enemies.push(new ErrorEnemy(currentTier, true)); 
         }
+        
+        // 🎯 [추가됨] 티어 상승 시 사이드바 다시 렌더링하여 신규 상점 타워 해금!
+        renderSidebarAndModals();
       }
 
+      // 스마트 조합 활성화 UI 로직
       const builtTowerTypes = towers.map(t => t.type); 
       
       document.querySelectorAll(".tower-btn").forEach(btn => {
+        if (btn.classList.contains("locked")) return; // 🎯 미해금 타워 무시
+        
         const type = btn.dataset.type;
         const spec = TOWER_SPECS[type];
         
@@ -1111,7 +1162,9 @@
       budget = 300; gameTime = 0; frame = 0; screenShake = 0; currentTier = 1; currentDimName = "EXCEL";
       document.documentElement.style.setProperty('--bar-color', '#107c41');
       document.getElementById('win-title').innerText = "📊 Multiverse_Defense.xlsx - Ultimate Edition";
-      updateUI(); gameState = 1; requestAnimationFrame(gameLoop);
+      updateUI(); 
+      renderSidebarAndModals(); // 🎯 재시작 시 1티어로 돌아가므로 상점 잠금 초기화
+      gameState = 1; requestAnimationFrame(gameLoop);
     };
 
     let lastTimestamp = 0; 
@@ -1184,7 +1237,7 @@
       if (gameState === 1) requestAnimationFrame(gameLoop);
     }
     
-    window.onload = () => { initUI(); drawExcelGrid(DIMENSIONS.EXCEL); };
+    window.onload = () => { renderSidebarAndModals(); drawExcelGrid(DIMENSIONS.EXCEL); };
     
   </script>
 </body>
