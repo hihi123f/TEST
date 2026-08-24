@@ -62,7 +62,18 @@
     #game-container { position: relative; width: 880px; height: 490px; background: #fff; flex-shrink: 0; }
     canvas { display: block; cursor: cell; touch-action: none; outline: none; } /* 캔버스 터치 최적화 */
 
-    #tower-selection { width: 280px; background: #fafafa; border-left: 1px solid var(--excel-border); padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+    #tower-selection {
+  width: 280px; 
+  background: #fafafa; 
+  border-left: 1px solid var(--excel-border); 
+  padding: 10px; 
+  padding-bottom: 40px; /* 🎯 하단 여백을 주어 잘림 방지 */
+  overflow-y: auto; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 15px; 
+  max-height: 490px; /* 🎯 캔버스와 동일한 최대 높이 제한 */
+}
     #tower-selection::-webkit-scrollbar { width: 6px; } #tower-selection::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
     .tower-row { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
     .tower-row-title { width: 100%; font-size: 13px; font-weight: bold; border-bottom: 2px solid #ddd; padding-bottom: 4px; margin-bottom: 2px; }
@@ -338,7 +349,7 @@
 
     // --- 4. 사운드 엔진 ---
     let audioCtx = null;
-    const Sound = {
+    const Sound = const Sound = {
       lastPlay: {},
       init() { try{ if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch(e){} },
       canPlay(type, cd) { const now = Date.now(); if (now - (this.lastPlay[type] || 0) > cd) { this.lastPlay[type] = now; return true; } return false; },
@@ -368,10 +379,16 @@
           else this.playOsc("sine", 350, 80, 0.05, 0.05, 0.01);
         }
       },
+      
+      // 🛡️ [추가됨] 쉴드 타격음 추가!
+      hitShield() {
+        if (!this.canPlay("h_shield", 50)) return;
+        this.playOsc("square", 800, 1200, 0.08, 0.2, 0.01); // 쨍그랑! 하는 고음 쇳소리
+      },
+
       dimShift() { this.playOsc("sine", 800, 50, 2.0, 0.5, 0); },
       error() { this.playOsc("sawtooth", 150, 100, 0.2, 0.1, 0); },
       upgrade() { this.playOsc("sine", 400, 1200, 0.15, 0.2, 0); },
-      // 🚨 증강 클릭 시 멈추던 버그 수정 (synergy 소리 추가)
       synergy() { this.playOsc("sine", 600, 1500, 0.4, 0.2, 0); } 
     };
 
@@ -488,24 +505,27 @@
         this.updateCoords();
       }
       
-      // ☠️ [수정된 부분] 파라미터에 poisonSpec 추가 및 세팅
       takeDamage(dmg, pierce = false, stunTime = 0, poisonSpec = null) {
-        if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return; }
-        
-        if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
-        
-        // 독 데미지 스펙이 들어오면 독 타이머 초기화
-        if (poisonSpec) {
-          this.poisonTimer = poisonSpec.time;
-          this.poisonDmg = poisonSpec.dmg;
-        }
+  if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return; }
+  
+  if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
+  if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg; }
 
-        let actualDmg = dmg;
-        if (this.shield > 0 && !pierce) { if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } else { this.shield -= actualDmg; } } 
-        else { this.hp -= actualDmg; }
-        this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
-        if (Math.random() > 0.5) floatingTexts.push(new FloatingText(this.x, this.y - 15, Math.round(dmg), pierce ? "#f1c40f" : "#fff", pierce));
-      }
+  let actualDmg = dmg;
+  if (this.shield > 0 && !pierce) { 
+    
+    // 🛡️ [추가됨] 쉴드 타격 시 사운드 및 육각 파편 스파크 발생!
+    Sound.hitShield();
+    if(highQuality) { for(let i=0; i<4; i++) particles.push(new HexParticle(this.x, this.y, "#3498db", 5)); }
+    
+    if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
+    else { this.shield -= actualDmg; } 
+  } 
+  else { this.hp -= actualDmg; }
+  
+  this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
+  if (Math.random() > 0.5) floatingTexts.push(new FloatingText(this.x, this.y - 15, Math.round(dmg), pierce ? "#f1c40f" : "#fff", pierce));
+}
       draw() {
         ctx.save(); ctx.translate(this.x, this.y);
         if (this.isBoss && this.dimName === "PPT") ctx.rotate(this.progress * Math.PI * 4);
@@ -663,27 +683,33 @@
           if(highQuality) for (let i = 0; i < 2; i++) particles.push(new Particle(this.x, this.y, this.tower.baseSpec.color, 3));
         }
 
-        // 연쇄 번개(체인 라이트닝) 로직
-        if (this.chainCount > 0) {
-          let nextTarget = null;
-          let minDist = 150; 
-          
-          for (let e of enemies) {
-            if (!this.hitSet.has(e)) {
-              let d = Math.hypot(e.x - this.target.x, e.y - this.target.y);
-              if (d < minDist) { minDist = d; nextTarget = e; }
-            }
-          }
-          
-          if (nextTarget) {
-            let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
-            nextProj.chainCount = this.chainCount - 1; 
-            nextProj.speed = this.speed * 1.5; 
-            projectiles.push(nextProj);
-            
-            if(highQuality) shockwaves.push(new Shockwave(this.target.x, this.target.y, 15, this.tower.baseSpec.color));
-          }
-        }
+        // ... (Projectile의 hit() 내부 광역/단일 타격 로직 아래부분) ...
+
+// ⚡ [수정됨] 연쇄 번개(체인 라이트닝) 지그재그 & 발광 로직
+if (this.chainCount > 0) {
+  let nextTarget = null;
+  let minDist = 150; 
+  
+  for (let e of enemies) {
+    if (!this.hitSet.has(e)) {
+      let d = Math.hypot(e.x - this.target.x, e.y - this.target.y);
+      if (d < minDist) { minDist = d; nextTarget = e; }
+    }
+  }
+  
+  if (nextTarget) {
+    // ⚡ [핵심] 타겟과 다음 타겟 사이에 찌릿! 하는 지그재그 번개 이펙트 생성
+    if(highQuality) lightnings.push(new LightningEffect(this.target.x, this.target.y, nextTarget.x, nextTarget.y, this.tower.baseSpec.color));
+
+    let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
+    nextProj.chainCount = this.chainCount - 1; 
+    // 연쇄된 번개는 눈에 안 보일 정도로 아주 빠르게 다음 타겟으로 이동!
+    nextProj.speed = this.speed * 3.5; 
+    projectiles.push(nextProj);
+    
+    if(highQuality) shockwaves.push(new Shockwave(this.target.x, this.target.y, 15, this.tower.baseSpec.color));
+  }
+}
       }
       
       draw() {
@@ -1039,6 +1065,8 @@ function gameLoop(timestamp) {
       for (let i = shockwaves.length - 1; i >= 0; i--) { if (shockwaves[i].update()) shockwaves.splice(i, 1); else shockwaves[i].draw(); }
       for (let i = particles.length - 1; i >= 0; i--) { if (particles[i].update()) particles.splice(i, 1); else particles[i].draw(); }
       for (let i = floatingTexts.length - 1; i >= 0; i--) { if (floatingTexts[i].update()) floatingTexts.splice(i, 1); else floatingTexts[i].draw(); }
+       // ⚡ [여기 추가됨!] 번개 이펙트 업데이트 및 그리기
+      for (let i = lightnings.length - 1; i >= 0; i--) { if (lightnings[i].update()) lightnings.splice(i, 1); else lightnings[i].draw(); }
 
       // 🎯 사거리 가이드라인 (마우스 오버 시)
       if (hoverCol >= 0 && hoverRow >= 0 && hoverCol < COLS && hoverRow < ROWS) {
