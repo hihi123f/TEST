@@ -201,11 +201,21 @@
           <div id="augment-cards-container"></div>
         </div>
 
+        <!-- 기존 게임 오버 화면 -->
         <div id="game-over-overlay" class="overlay" style="display: none;">
           <h1 id="go-title">#STACK_OVERFLOW!</h1>
           <div id="final-score" style="color:#fff; margin-bottom: 25px; font-size: 18px;"></div>
           <button class="btn-action" onclick="restartGame()">↺ 다시 시작</button>
         </div>
+        
+        <!-- 🎯 [여기 추가!] 누락되었던 일시정지 화면 HTML -->
+        <div id="pause-overlay" class="overlay" style="display: none; z-index: 70;">
+          <h1 style="color: #f1c40f;">PAUSED</h1>
+          <div style="color:#fff; margin-bottom: 25px; font-size: 16px;">게임이 일시정지 되었습니다.</div>
+          <button class="btn-action btn-pause" onclick="togglePause()">▶ 게임 재개</button>
+        </div>
+        <!-- 🎯 [추가 끝] -->
+        
       </div>
       <!-- 사이드바 (타워 선택) -->
       <div id="tower-selection"></div>
@@ -845,20 +855,11 @@ if (this.chainCount > 0) {
 
     canvas.addEventListener("contextmenu", (e) => { e.preventDefault(); if (gameState === 1) handleSell(e); });
 
-    let pressTimer = null; 
-    let isLongPressed = false; 
-    let startX, startY;
-    
-    canvas.addEventListener("pointerdown", (e) => {
-      if (gameState !== 1 || e.button === 2) return; 
-      isLongPressed = false; startX = e.clientX; startY = e.clientY;
-      pressTimer = setTimeout(() => { isLongPressed = true; handleSell(e); }, 400); 
-    });
 
     let hoverCol = -1; let hoverRow = -1;
 
     canvas.addEventListener("pointermove", (e) => {
-      if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) { clearTimeout(pressTimer); pressTimer = null; }
+      // (타이머 관련 한 줄 삭제 완료)
       if (gameState !== 1) return; 
       const pos = getGridPos(e); const nameBox = document.getElementById("name-box");
       hoverCol = pos.col; hoverRow = pos.row;
