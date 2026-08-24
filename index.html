@@ -576,22 +576,24 @@
       
       takeDamage(dmg, pierce = false, stunTime = 0, poisonSpec = null) {
         if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return; }
-        
-        // 🎯 [가속형(ACCEL) 피격 반응] 피격 시 높은 확률로 미친듯이 달려나감
-        if (this.type === "ACCEL" && this.shield <= 0 && Math.random() > 0.6) {
-          this.accelTimer = 45; // 0.75초간 질주
-        }
 
         let actualDmg = dmg;
+        
+        // 1. 데미지를 먼저 넣어 쉴드를 깎습니다.
         if (this.shield > 0 && !pierce) { 
           Sound.hitShield();
           if(highQuality) { for(let i=0; i<4; i++) particles.push(new HexParticle(this.x, this.y, "#3498db", 5)); }
+          
           if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
           else { this.shield -= actualDmg; } 
         } 
         else { this.hp -= actualDmg; }
 
-        if (this.shield <= 0) { if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime); }
+        // 🛡️ 2. 쉴드가 다 까졌을 때만 스턴(기절)을 넣습니다.
+        if (this.shield <= 0) {
+          if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
+        }
+        
         if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg; }
 
         this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
@@ -634,12 +636,9 @@
         this.isSynergy = !!this.baseSpec.req; this.level = 1; 
         this.totalSpent = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
         this.updateStats(); this.cooldown = 0; this.recoil = 0; this.laserTargets = [];
-        
-        // 🎯 [추가됨] 누적 딜량 기록 변수
         this.totalDamageDealt = 0; 
       }
       updateStats() {
-        // 증강(글로벌 변수) 배수들을 곱해줍니다!
         this.dmg = (this.baseSpec.dmg * Math.pow(1.35, this.level - 1)) * globalDmgMult;    
         const baseCost = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
         this.upgradeCost = Math.floor((baseCost * Math.pow(1.2, this.level)) * globalCostMult);
@@ -670,7 +669,6 @@
           this.laserTargets = targets;
           if (this.cooldown <= 0) {
             targets.forEach(t => {
-              // 데미지를 입힙니다 (이때 위에서 만든 takeDamage가 실행되며 쉴드가 깎임)
               t.takeDamage(this.dmg, this.baseSpec.pierce, this.baseSpec.stun || 0);
               this.totalDamageDealt += this.dmg; 
               
@@ -684,13 +682,21 @@
                 if(highQuality) shockwaves.push(new Shockwave(t.x, t.y, this.baseSpec.splash, this.baseSpec.color));
               }
               
-              // 🛡️ [추가됨] 방금 맞고 쉴드가 다 깨졌거나 원래 없던 적에게만 슬로우(Slow) 적용!
+              // 🛡️ 쉴드 다 까진 적만 슬로우(Slow) 적용!
               if (t.shield <= 0) {
                 t.currentSpeed = t.speed * Math.max(0.1, 0.4 - (this.level * 0.02)); 
                 t.slowTimer = 10; 
               }
             });
             this.cooldown = this.rate; Sound.hit(this.type); 
+          }
+        } 
+        // 🚨 [복구된 부분] 이 else 구문이 통째로 날아가서 투사체 타워가 공격을 안 했던 것입니다!
+        else {
+          this.laserTargets = [];
+          if (targets.length > 0 && this.cooldown <= 0) {
+            targets.forEach(t => projectiles.push(new Projectile(this.x, this.y, t, this)));
+            this.cooldown = this.rate; this.recoil = 5; Sound.shoot(this.type);
           }
         }
       }
