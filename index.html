@@ -520,13 +520,19 @@
         this.y = this.track[seg].y + (this.track[nextSeg].y - this.track[seg].y) * t;
       }
       update() {
-        // 🛡️ [추가된 부분] 쉴드 피격 타이머 갱신
+        // 🛡️ 쉴드 피격 타이머 갱신
         if (this.shieldHitTimer > 0) this.shieldHitTimer--;
-
-        if (this.isBoss && this.dimName === "PPT") { this.invincTimer++; this.isInvincible = (this.invincTimer % 200 < 60); }
-        // ... (아래는 기존 코드와 동일)
         
-        // ☠️ [추가된 부분] 독 데미지 적용 로직
+        if (this.isBoss && this.dimName === "PPT") { this.invincTimer++; this.isInvincible = (this.invincTimer % 200 < 60); }
+        
+        // 🛡️ [추가됨] CC 면역: 쉴드가 1이라도 남아있으면 슬로우/기절 강제 무시 및 원래 속도 유지
+        if (this.shield > 0) {
+          this.stunTimer = 0;
+          this.slowTimer = 0;
+          this.currentSpeed = this.speed;
+        }
+
+        // ☠️ 독 데미지 적용 로직
         if (this.poisonTimer > 0) {
           this.poisonTimer--;
           this.hp -= this.poisonDmg; // 방어막 무시 직접 타격
@@ -546,27 +552,32 @@
       }
       
       takeDamage(dmg, pierce = false, stunTime = 0, poisonSpec = null) {
-  if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return; }
-  
-  if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
-  if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg; }
+        if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return; }
+        
+        // 독 데미지는 쉴드 유무와 상관없이 부여 (원치 않으시면 이것도 아래로 내리면 됩니다)
+        if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg; }
 
-  let actualDmg = dmg;
-  if (this.shield > 0 && !pierce) { 
-    
-    // 🛡️ [수정됨] 쉴드 타격 시 사운드 및 쉴드 발광 타이머 작동!
-    Sound.hitShield();
-    this.shieldHitTimer = 15; // 15프레임 동안 프로토스 쉴드 이펙트 유지
-    if(highQuality) { for(let i=0; i<4; i++) particles.push(new HexParticle(this.x, this.y, "#00ffff", 5)); } // 스파크 색상을 좀 더 눈부신 시안(Cyan)으로 변경
-    
-    if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
-    else { this.shield -= actualDmg; } 
-  } 
-  else { this.hp -= actualDmg; }
-  
-  this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
-  if (Math.random() > 0.5) floatingTexts.push(new FloatingText(this.x, this.y - 15, Math.round(dmg), pierce ? "#f1c40f" : "#fff", pierce));
-}
+        let actualDmg = dmg;
+        if (this.shield > 0 && !pierce) { 
+          
+          // 🛡️ 쉴드 타격 시 사운드 및 쉴드 발광 타이머 작동!
+          Sound.hitShield();
+          this.shieldHitTimer = 15; // 15프레임 동안 프로토스 쉴드 이펙트 유지
+          if(highQuality) { for(let i=0; i<4; i++) particles.push(new HexParticle(this.x, this.y, "#00ffff", 5)); }
+          
+          if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
+          else { this.shield -= actualDmg; } 
+        } 
+        else { this.hp -= actualDmg; }
+        
+        // 🛡️ [수정됨] CC 면역 로직: 데미지를 다 받고 난 후, 쉴드가 깨졌을 때만 기절 적용!
+        if (this.shield <= 0) {
+          if (stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
+        }
+        
+        this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
+        if (Math.random() > 0.5) floatingTexts.push(new FloatingText(this.x, this.y - 15, Math.round(dmg), pierce ? "#f1c40f" : "#fff", pierce));
+      }
       draw() {
         ctx.save(); ctx.translate(this.x, this.y);
         if (this.isBoss && this.dimName === "PPT") ctx.rotate(this.progress * Math.PI * 4);
