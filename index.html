@@ -311,35 +311,38 @@
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
     const TOWER_SPECS = {
-      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 40, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격" },
-      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 10, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤" },
-      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 60, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)" },
-      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 110, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격" },
-      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격" },
-      MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격" },
-      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 2, time: 180 }, desc:"적에게 3초간 지속 독 데미지" },
-      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개" },
+      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 15, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격" },
+      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 2, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤" },
+      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 20, color: "#3498db", name: "MIN", stun: 45, desc:"적을 완전히 얼림(기절)" },
+      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 45, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격" },
+      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 15, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격" },
+      MAX: { type:"base", cost: 130, range: 500, rate: 75, dmg: 180, color: "#8e44ad", name: "MAX", desc:"사거리 맵 전체의 강력한 한 방" },
+      // 독 타워 (1초에 60프레임 기준, time: 180은 3초간 지속)
+      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 10, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 0.5, time: 180 }, desc:"적에게 3초간 지속 독 데미지" },
+
+      // 연쇄 번개 타워 (chain: 3은 3번 튕김)
+      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 25, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개" },
       
-      SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 200, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
-      COUNTIFS: { type:"epic", req: ["MAX", "SUM"], range: 180, rate: 4, dmg: 80, color: "#1abc9c", name: "CNTIFS", desc:"초고속 연사 기관총" },
-      INDEXMATCH: { type:"epic", req: ["VLOOKUP", "MAX"], range: 260, rate: 65, dmg: 900, color: "#f1c40f", name: "IDXMAT", splash: 120, desc:"장거리 넓은 범위 폭발" },
-      XLOOKUP: { type:"epic", req: ["VLOOKUP", "AVERAGE"], range: 160, rate: 40, dmg: 140, color: "#e74c3c", name: "XLOOK", splash: 80, multi: 3, desc:"3발 발사 후 각각 광역 폭발" },
-      ISBLANK: { type:"epic", req: ["IFERROR", "MIN"], range: 125, rate: 60, dmg: 100, color: "#00ced1", name: "ISBLK", splash: 100, stun: 18, desc:"범위 안의 모든 적 짧은 빙결" },
-      LARGE: { type:"epic", req: ["MAX", "AVERAGE"], range: 260, rate: 60, dmg: 400, color: "#e84393", name: "LARGE", multi: 5, desc:"장거리 5명 동시 저격" },
-      SMALL: { type:"epic", req: ["MIN", "SUM"], range: 130, rate: 12, dmg: 80, color: "#fdcb6e", name: "SMALL", stun: 10, desc:"엄청난 속도로 적 연쇄 빙결" },
-      SUBTOTAL: { type:"epic", req: ["SUM", "VLOOKUP"], range: 130, rate: 18, dmg: 120, color: "#d35400", name: "SUBTOT", splash: 65, desc:"빠른 속도의 광역 폭격기" },
-      PRODUCT: { type:"epic", req: ["SUM", "AVERAGE"], range: 130, rate: 15, dmg: 90, color: "#27ae60", name: "PROD", multi: 4, desc:"고속 4연발 속사포" },
-      XMATCH: { type:"epic", req: ["IFERROR", "VLOOKUP"], range: 130, rate: 4, dmg: 35, color: "#c0392b", name: "XMAT", splash: 100, isBeam: true, desc:"주변까지 둔화시키는 장판 빔" },
-      CONCAT: { type:"epic", req: ["IFERROR", "AVERAGE"], range: 130, rate: 4, dmg: 30, color: "#8e44ad", name: "CONCAT", multi: 4, isBeam: true, desc:"4갈래의 다중 슬로우 빔" },
-      EXACT: { type:"epic", req: ["IFERROR", "MAX"], range: 260, rate: 3, dmg: 180, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"장거리 단일 둔화 빔" },
-      MATCH: { type:"epic", req: ["MIN", "VLOOKUP"], range: 140, rate: 50, dmg: 150, color: "#2980b9", name: "MATCH", splash: 90, stun: 15, desc:"폭발하며 주변 적까지 얼리는 폭탄" },
-      MEDIAN: { type:"epic", req: ["MIN", "AVERAGE"], range: 140, rate: 40, dmg: 80, color: "#16a085", name: "MEDIAN", multi: 4, stun: 15, desc:"4명의 적을 동시 기절" },
-      FLOOR: { type:"epic", req: ["MIN", "MAX"], range: 260, rate: 70, dmg: 550, color: "#7f8c8d", name: "FLOOR", stun: 24, desc:"초장거리 단일 적 확정 기절(경직)" },
+      SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 80, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
+      COUNTIFS: { type:"epic", req: ["MAX", "SUM"], range: 180, rate: 4, dmg: 35, color: "#1abc9c", name: "CNTIFS", desc:"초고속 연사 기관총" },
+      INDEXMATCH: { type:"epic", req: ["VLOOKUP", "MAX"], range: 500, rate: 65, dmg: 400, color: "#f1c40f", name: "IDXMAT", splash: 120, desc:"맵 전체 사거리 + 넓은 범위 폭발" },
+      XLOOKUP: { type:"epic", req: ["VLOOKUP", "AVERAGE"], range: 160, rate: 40, dmg: 50, color: "#e74c3c", name: "XLOOK", splash: 80, multi: 3, desc:"3발 발사 후 각각 광역 폭발" },
+      ISBLANK: { type:"epic", req: ["IFERROR", "MIN"], range: 125, rate: 60, dmg: 40, color: "#00ced1", name: "ISBLK", splash: 100, stun: 60, desc:"범위 안의 모든 적 빙결" },
+      LARGE: { type:"epic", req: ["MAX", "AVERAGE"], range: 500, rate: 60, dmg: 150, color: "#e84393", name: "LARGE", multi: 5, desc:"맵 전체에서 5명 동시 저격" },
+      SMALL: { type:"epic", req: ["MIN", "SUM"], range: 130, rate: 12, dmg: 30, color: "#fdcb6e", name: "SMALL", stun: 15, desc:"엄청난 속도로 적 연쇄 빙결" },
+      SUBTOTAL: { type:"epic", req: ["SUM", "VLOOKUP"], range: 130, rate: 18, dmg: 45, color: "#d35400", name: "SUBTOT", splash: 65, desc:"빠른 속도의 광역 폭격기" },
+      PRODUCT: { type:"epic", req: ["SUM", "AVERAGE"], range: 130, rate: 15, dmg: 30, color: "#27ae60", name: "PROD", multi: 4, desc:"고속 4연발 속사포" },
+      XMATCH: { type:"epic", req: ["IFERROR", "VLOOKUP"], range: 130, rate: 4, dmg: 10, color: "#c0392b", name: "XMAT", splash: 100, isBeam: true, desc:"주변까지 둔화시키는 장판 빔" },
+      CONCAT: { type:"epic", req: ["IFERROR", "AVERAGE"], range: 130, rate: 4, dmg: 8, color: "#8e44ad", name: "CONCAT", multi: 4, isBeam: true, desc:"4갈래의 다중 슬로우 빔" },
+      EXACT: { type:"epic", req: ["IFERROR", "MAX"], range: 500, rate: 3, dmg: 80, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"맵 끝에서 쏘는 단일 둔화" },
+      MATCH: { type:"epic", req: ["MIN", "VLOOKUP"], range: 140, rate: 50, dmg: 50, color: "#2980b9", name: "MATCH", splash: 90, stun: 30, desc:"폭발하며 주변 적까지 얼리는 폭탄" },
+      MEDIAN: { type:"epic", req: ["MIN", "AVERAGE"], range: 140, rate: 40, dmg: 30, color: "#16a085", name: "MEDIAN", multi: 4, stun: 40, desc:"4명의 적을 동시 기절" },
+      FLOOR: { type:"epic", req: ["MIN", "MAX"], range: 500, rate: 70, dmg: 200, color: "#7f8c8d", name: "FLOOR", stun: 80, desc:"초장거리 단일 적 확정 기절" },
       
-      LET: { type:"ancient", req: ["SUM", "MAX", "AVERAGE"], range: 260, rate: 45, dmg: 800, color: "#f39c12", name: "LET", multi: 8, desc:"[고대] 8명 궤도 동시 타격" },
-      FILTER: { type:"ancient", req: ["MIN", "VLOOKUP", "IFERROR"], range: 260, rate: 5, dmg: 250, color: "#3498db", name: "FILTER", isBeam: true, splash: 200, stun: 18, desc:"[고대] 블리자드. 초광역 빙결+슬로우 필드" },
-      RANDARRAY: { type:"ancient", req: ["SUM", "MIN", "MAX"], range: 260, rate: 5, dmg: 300, color: "#e84393", name: "RAND", stun: 10, desc:"[고대] 카오스 머신건 무차별 연사" },
-      LAMBDA: { type:"hidden", req: ["VLOOKUP", "MAX", "IFERROR"], range: 260, rate: 5, dmg: 400, color: "#000", name: "LAMBDA", isBeam: true, splash: 120, pierce: true, desc:"[히든] 쉴드관통+슬로우+광역파괴 레이저" }
+      LET: { type:"ancient", req: ["SUM", "MAX", "AVERAGE"], range: 500, rate: 45, dmg: 250, color: "#f39c12", name: "LET", multi: 8, desc:"[고대] 전역 8명 궤도 동시 타격" },
+      FILTER: { type:"ancient", req: ["MIN", "VLOOKUP", "IFERROR"], range: 300, rate: 5, dmg: 80, color: "#3498db", name: "FILTER", isBeam: true, splash: 200, stun: 60, desc:"[고대] 블리자드. 초광역 빙결+슬로우 필드" },
+      RANDARRAY: { type:"ancient", req: ["SUM", "MIN", "MAX"], range: 300, rate: 5, dmg: 100, color: "#e84393", name: "RAND", stun: 10, desc:"[고대] 카오스 머신건 무차별 연사" },
+      LAMBDA: { type:"hidden", req: ["VLOOKUP", "MAX", "IFERROR"], range: 300, rate: 5, dmg: 150, color: "#000", name: "LAMBDA", isBeam: true, splash: 120, pierce: true, desc:"[히든] 쉴드관통+슬로우+광역파괴 레이저" }
     };
 
     function initUI() {
@@ -700,31 +703,15 @@
         this.totalDamageDealt = 0; 
       }
       updateStats() {
-        // 🎯 공격력 증가폭 대폭 상향 (레벨업마다 1.45배 증가로 타격감 극대화)
-        this.dmg = (this.baseSpec.dmg * Math.pow(1.45, this.level - 1)) * globalDmgMult;    
+        // 증강(글로벌 변수) 배수들을 곱해줍니다!
+        this.dmg = (this.baseSpec.dmg * Math.pow(1.35, this.level - 1)) * globalDmgMult;    
         const baseCost = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
         this.upgradeCost = Math.floor((baseCost * Math.pow(1.2, this.level)) * globalCostMult);
-        
-        // 🎯 사거리 인플레이션 억제 (레벨당 1% 증가로 축소)
-        this.range = (this.baseSpec.range * (1 + (this.level - 1) * 0.01)) * globalRangeMult; 
-        
-        // 🎯 공속 인플레이션 억제 (레벨당 0.4 프레임만 줄여서 타워 고유 리듬 유지)
-        this.rate = Math.max(2, Math.round((this.baseSpec.rate - (this.level - 1) * 0.4) * globalRateMult));
-        
-        // MAX 레벨 도달 시 텍스트 변경
-        const maxLvl = this.baseSpec.type === "base" ? 5 : (this.baseSpec.type === "epic" ? 10 : 15);
-        this.displayName = this.level >= maxLvl ? `${this.baseSpec.name} MAX` : `${this.baseSpec.name} L${this.level}`;
+        this.range = (this.baseSpec.range * (1 + (this.level - 1) * 0.05)) * globalRangeMult; 
+        this.rate = Math.max(2, Math.round((this.baseSpec.rate - (this.level - 1) * 1.5) * globalRateMult));
+        this.displayName = `${this.baseSpec.name} L${this.level}`;
       }
-      
       upgrade() {
-        // 🎯 강화 상한선 체크 (기본 5, 에픽 10, 고대/히든 15)
-        const maxLvl = this.baseSpec.type === "base" ? 5 : (this.baseSpec.type === "epic" ? 10 : 15);
-        if (this.level >= maxLvl) {
-          floatingTexts.push(new FloatingText(this.x, this.y - 20, "MAX LEVEL!", "#e74c3c", true, 30));
-          Sound.error();
-          return false;
-        }
-
         if (budget >= this.upgradeCost) {
           budget -= this.upgradeCost; this.totalSpent += this.upgradeCost; 
           this.level++; this.updateStats(); Sound.upgrade();
@@ -834,40 +821,35 @@
         // ... (Projectile의 hit() 내부 광역/단일 타격 로직 아래부분) ...
 
 // ⚡ [수정됨] 연쇄 번개(체인 라이트닝) 지그재그 & 발광 로직
-// 1. hit() 함수 내의 연쇄 번개(체인 라이트닝) 로직 부분을 이렇게 변경:
-      if (this.chainCount > 0) {
-        let nextTarget = null;
-        let minDist = 150; 
-        
-        for (let e of enemies) {
-          if (!this.hitSet.has(e)) {
-            let d = Math.hypot(e.x - this.target.x, e.y - this.target.y);
-            if (d < minDist) { minDist = d; nextTarget = e; }
-          }
-        }
-        
-        if (nextTarget) {
-          if(highQuality) lightnings.push(new LightningEffect(this.target.x, this.target.y, nextTarget.x, nextTarget.y, this.tower.baseSpec.color));
+if (this.chainCount > 0) {
+  let nextTarget = null;
+  let minDist = 150; 
+  
+  for (let e of enemies) {
+    if (!this.hitSet.has(e)) {
+      let d = Math.hypot(e.x - this.target.x, e.y - this.target.y);
+      if (d < minDist) { minDist = d; nextTarget = e; }
+    }
+  }
+  
+  if (nextTarget) {
+    // ⚡ [핵심] 타겟과 다음 타겟 사이에 찌릿! 하는 지그재그 번개 이펙트 생성
+    if(highQuality) lightnings.push(new LightningEffect(this.target.x, this.target.y, nextTarget.x, nextTarget.y, this.tower.baseSpec.color));
 
-          let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
-          nextProj.chainCount = this.chainCount - 1; 
-          nextProj.speed = this.speed * 3.5; 
-          projectiles.push(nextProj);
-          
-          // ⚡ 동글동글한 Shockwave 이펙트 삭제 완료!
-        }
+    let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
+    nextProj.chainCount = this.chainCount - 1; 
+    // 연쇄된 번개는 눈에 안 보일 정도로 아주 빠르게 다음 타겟으로 이동!
+    nextProj.speed = this.speed * 3.5; 
+    projectiles.push(nextProj);
+    
+    if(highQuality) shockwaves.push(new Shockwave(this.target.x, this.target.y, 15, this.tower.baseSpec.color));
+  }
+}
       }
-
-      // ----------------------------------------------------
-
-      // 2. draw() 함수 전체를 이렇게 변경:
+      
       draw() {
         ctx.fillStyle = this.tower.baseSpec.color;
-        
-        // ⚡ 번개 타워(chain) 투사체는 동그란 공을 그리지 않고 투명하게 날아감 (지그재그 선만 보임)
-        if (this.tower.baseSpec.chain) return;
-
-        if (this.tower.baseSpec.splash || this.tower.type.includes("MAX") || this.tower.type.includes("LARGE") || this.tower.type.includes("LET")) { 
+        if (this.tower.baseSpec.splash || this.tower.baseSpec.chain || this.tower.type.includes("MAX") || this.tower.type.includes("LARGE") || this.tower.type.includes("LET")) { 
           ctx.beginPath(); ctx.arc(this.x, this.y, this.tower.baseSpec.splash ? 5 : 4, 0, Math.PI * 2); ctx.fill(); 
         } 
         else { ctx.font = "bold 14px monospace"; ctx.fillText(";", this.x, this.y); }
@@ -1069,14 +1051,7 @@
         💰 <b>투입 예산:</b> $${tower.totalSpent}
       `;
       
-      // 🎯 [수정됨] MAX 레벨 도달 시 업그레이드 버튼 텍스트 변경
-      const maxLvl = tower.baseSpec.type === "base" ? 5 : (tower.baseSpec.type === "epic" ? 10 : 15);
-      if (tower.level >= maxLvl) {
-        document.getElementById("tm-upgrade").innerText = `강화 불가 (MAX)`;
-      } else {
-        document.getElementById("tm-upgrade").innerText = `업그레이드 ($${tower.upgradeCost})`;
-      }
-      
+      document.getElementById("tm-upgrade").innerText = `업그레이드 ($${tower.upgradeCost})`;
       document.getElementById("tm-sell").innerText = `판매 (+$${refund})`;
       
       modal.style.display = "block";
