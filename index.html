@@ -1136,12 +1136,60 @@ if (this.chainCount > 0) {
 
     canvas.addEventListener("pointerleave", () => { hoverCol = -1; hoverRow = -1; });
 
-    if (budget >= spec.cost)
+    // 🎯 [복구 완료!] 날아갔던 타워 클릭(설치/조합) 이벤트 리스너
+    canvas.addEventListener("pointerup", (e) => {
+      if (gameState !== 1 || e.button === 2) return;
+      Sound.init();
 
+      const pos = getGridPos(e); if (!pos.isValid || pos.col >= COLS || pos.row >= ROWS) return;
+      const existing = towers.find(t => t.col === pos.col && t.row === pos.row);
+      const spec = TOWER_SPECS[selectedTower];
+
+      const isSynergyIngredient = spec.req && existing && spec.req.includes(existing.type);
+      
+      if (existing && !isSynergyIngredient) {
+        openTowerModal(existing); 
+        return;
+      }
+      if (!existing) { closeTowerModal(); }
+
+      if (spec.req) {
+        const requiredTypes = spec.req.slice(); const towersToRemove = [];
+        if (existing && requiredTypes.includes(existing.type)) { towersToRemove.push(existing); requiredTypes.splice(requiredTypes.indexOf(existing.type), 1); }
+        for (let reqType of requiredTypes) {
+          const found = towers.find(t => t.type === reqType && !towersToRemove.includes(t));
+          if (found) towersToRemove.push(found);
+          else { floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H, "재료 부족!", "#e74c3c", true, 30)); Sound.error(); return; }
+        }
+        let refundGold = 0;
+        towersToRemove.forEach(t => {
+          refundGold += t.totalSpent * 0.8; 
+          const idx = towers.indexOf(t); if(idx > -1) towers.splice(idx, 1);
+          if(highQuality) for(let i=0; i<8; i++) particles.push(new Particle(t.x, t.y, "#888", 3));
+        });
+        
+        refundGold = Math.floor(refundGold); budget += refundGold;
+        
+        towers.push(new Tower(pos.col, pos.row, selectedTower)); 
+        Sound.synergy();
+
+        if (!discoveredTowers.has(selectedTower)) {
+          discoveredTowers.add(selectedTower);
+          renderRecipeModal();
+          floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 30, `도감 등록 완료!`, "#3498db", true, 60));
+        }
+
+        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
+        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
+        updateUI(); return;
+      }
+      
+      // 일반 타워 설치 로직
+      if (budget >= spec.cost) { budget -= spec.cost; towers.push(new Tower(pos.col, pos.row, selectedTower)); updateUI(); }
+    });
 
     // ----------------------------------------------------
-    // 🎯 [여기부터 새로 추가!] 모달 제어용 변수 및 함수들
-    // 위 pointerup 이벤트 리스너 바로 밑에 붙여넣어 주세요.
+    // 🎯 모달 제어용 변수 및 함수들
     // ----------------------------------------------------
     let clickedTowerObj = null;
 
