@@ -79,6 +79,7 @@
     .tower-row-title { width: 100%; font-size: 13px; font-weight: bold; border-bottom: 2px solid #ddd; padding-bottom: 4px; margin-bottom: 2px; }
     
     .tower-btn { flex: 1 1 45%; background: #fff; border: 1px solid var(--excel-border); border-radius: 4px; padding: 8px 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.1s; text-align: center; }
+    .tower-btn.revealed { display: block; } /* 🎯 해금되면 보이게 함 */
     .tower-btn.base { border-color: #27ae60; color: #107c41; } .tower-btn.base.active { background: #c8e6c9; border-width: 2px; }
     .tower-btn.epic { border-color: #f39c12; color: #d35400; } .tower-btn.epic.active { background: #fdebd0; border-width: 2px; }
     .tower-btn.ancient { border-color: #8e44ad; color: #8e44ad; } .tower-btn.ancient.active { background: #f5eef8; border-width: 2px; }
@@ -311,66 +312,144 @@
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
     const TOWER_SPECS = {
-      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 15, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격" },
-      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 2, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤" },
-      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 20, color: "#3498db", name: "MIN", stun: 45, desc:"적을 완전히 얼림(기절)" },
-      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 45, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격" },
-      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 15, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격" },
-      MAX: { type:"base", cost: 130, range: 500, rate: 75, dmg: 180, color: "#8e44ad", name: "MAX", desc:"사거리 맵 전체의 강력한 한 방" },
-      // 독 타워 (1초에 60프레임 기준, time: 180은 3초간 지속)
-      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 10, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 0.5, time: 180 }, desc:"적에게 3초간 지속 독 데미지" },
+      // 🟢 [기본 타워] - unlockTier 도달 시 상점에 자동 해금
+      SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 15, color: "#107c41", name: "SUM", desc:"단일 공격", unlockTier: 1 },
+      IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 2, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적 둔화 빔", unlockTier: 1 },
+      MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 20, color: "#3498db", name: "MIN", stun: 45, desc:"단일 확정 빙결", unlockTier: 1 },
+      VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 45, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 광역 타격", unlockTier: 3 },
+      AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 15, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명 동시 타격", unlockTier: 5 },
+      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 10, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 0.5, time: 180 }, desc:"3초 지속 맹독", unlockTier: 8 },
+      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 25, color: "#f1c40f", name: "POWER", chain: 3, desc:"3번 튕기는 연쇄 번개", unlockTier: 11 },
 
-      // 연쇄 번개 타워 (chain: 3은 3번 튕김)
-      POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 25, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개" },
-      
-      SUMIF: { type:"epic", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 80, color: "#e67e22", name: "SUMIF", pierce: true, desc:"방어 쉴드 무시 직접 타격" },
-      COUNTIFS: { type:"epic", req: ["MAX", "SUM"], range: 180, rate: 4, dmg: 35, color: "#1abc9c", name: "CNTIFS", desc:"초고속 연사 기관총" },
-      INDEXMATCH: { type:"epic", req: ["VLOOKUP", "MAX"], range: 500, rate: 65, dmg: 400, color: "#f1c40f", name: "IDXMAT", splash: 120, desc:"맵 전체 사거리 + 넓은 범위 폭발" },
-      XLOOKUP: { type:"epic", req: ["VLOOKUP", "AVERAGE"], range: 160, rate: 40, dmg: 50, color: "#e74c3c", name: "XLOOK", splash: 80, multi: 3, desc:"3발 발사 후 각각 광역 폭발" },
-      ISBLANK: { type:"epic", req: ["IFERROR", "MIN"], range: 125, rate: 60, dmg: 40, color: "#00ced1", name: "ISBLK", splash: 100, stun: 60, desc:"범위 안의 모든 적 빙결" },
-      LARGE: { type:"epic", req: ["MAX", "AVERAGE"], range: 500, rate: 60, dmg: 150, color: "#e84393", name: "LARGE", multi: 5, desc:"맵 전체에서 5명 동시 저격" },
-      SMALL: { type:"epic", req: ["MIN", "SUM"], range: 130, rate: 12, dmg: 30, color: "#fdcb6e", name: "SMALL", stun: 15, desc:"엄청난 속도로 적 연쇄 빙결" },
-      SUBTOTAL: { type:"epic", req: ["SUM", "VLOOKUP"], range: 130, rate: 18, dmg: 45, color: "#d35400", name: "SUBTOT", splash: 65, desc:"빠른 속도의 광역 폭격기" },
-      PRODUCT: { type:"epic", req: ["SUM", "AVERAGE"], range: 130, rate: 15, dmg: 30, color: "#27ae60", name: "PROD", multi: 4, desc:"고속 4연발 속사포" },
-      XMATCH: { type:"epic", req: ["IFERROR", "VLOOKUP"], range: 130, rate: 4, dmg: 10, color: "#c0392b", name: "XMAT", splash: 100, isBeam: true, desc:"주변까지 둔화시키는 장판 빔" },
-      CONCAT: { type:"epic", req: ["IFERROR", "AVERAGE"], range: 130, rate: 4, dmg: 8, color: "#8e44ad", name: "CONCAT", multi: 4, isBeam: true, desc:"4갈래의 다중 슬로우 빔" },
-      EXACT: { type:"epic", req: ["IFERROR", "MAX"], range: 500, rate: 3, dmg: 80, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"맵 끝에서 쏘는 단일 둔화" },
-      MATCH: { type:"epic", req: ["MIN", "VLOOKUP"], range: 140, rate: 50, dmg: 50, color: "#2980b9", name: "MATCH", splash: 90, stun: 30, desc:"폭발하며 주변 적까지 얼리는 폭탄" },
-      MEDIAN: { type:"epic", req: ["MIN", "AVERAGE"], range: 140, rate: 40, dmg: 30, color: "#16a085", name: "MEDIAN", multi: 4, stun: 40, desc:"4명의 적을 동시 기절" },
-      FLOOR: { type:"epic", req: ["MIN", "MAX"], range: 500, rate: 70, dmg: 200, color: "#7f8c8d", name: "FLOOR", stun: 80, desc:"초장거리 단일 적 확정 기절" },
-      
-      LET: { type:"ancient", req: ["SUM", "MAX", "AVERAGE"], range: 500, rate: 45, dmg: 250, color: "#f39c12", name: "LET", multi: 8, desc:"[고대] 전역 8명 궤도 동시 타격" },
-      FILTER: { type:"ancient", req: ["MIN", "VLOOKUP", "IFERROR"], range: 300, rate: 5, dmg: 80, color: "#3498db", name: "FILTER", isBeam: true, splash: 200, stun: 60, desc:"[고대] 블리자드. 초광역 빙결+슬로우 필드" },
-      RANDARRAY: { type:"ancient", req: ["SUM", "MIN", "MAX"], range: 300, rate: 5, dmg: 100, color: "#e84393", name: "RAND", stun: 10, desc:"[고대] 카오스 머신건 무차별 연사" },
-      LAMBDA: { type:"hidden", req: ["VLOOKUP", "MAX", "IFERROR"], range: 300, rate: 5, dmg: 150, color: "#000", name: "LAMBDA", isBeam: true, splash: 120, pierce: true, desc:"[히든] 쉴드관통+슬로우+광역파괴 레이저" }
+      // 🔵 [레어 타워] (기본 + 기본)
+      SUMIF: { type:"rare", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 80, color: "#2980b9", name: "SUMIF", pierce: true, desc:"[레어] 쉴드 무시 관통 타격" },
+      COUNT: { type:"rare", req: ["SUM", "MIN"], range: 140, rate: 12, dmg: 40, color: "#1abc9c", name: "COUNT", stun: 20, desc:"[레어] 타격 + 짧은 빙결" },
+      SEARCH: { type:"rare", req: ["VLOOKUP", "AVERAGE"], range: 160, rate: 30, dmg: 60, color: "#e74c3c", name: "SEARCH", splash: 80, multi: 2, desc:"[레어] 2명 동시 광역 폭발" },
+      YIELD: { type:"rare", req: ["RATE", "IFERROR"], range: 140, rate: 25, dmg: 30, color: "#27ae60", name: "YIELD", poisonSpec: {dmg: 1.5, time: 200}, isBeam:true, desc:"[레어] 둔화 + 맹독 장판 빔" },
+
+      // 🟠 [에픽 타워] (레어 + 레어 등 조합)
+      COUNTIFS: { type:"epic", req: ["SUMIF", "COUNT"], range: 180, rate: 4, dmg: 150, color: "#d35400", name: "CNTIFS", pierce: true, stun: 15, desc:"[에픽] 초고속 관통+기절 기관총" },
+      XLOOKUP: { type:"epic", req: ["SEARCH", "YIELD"], range: 180, rate: 20, dmg: 120, color: "#8e44ad", name: "XLOOK", splash: 100, poisonSpec: {dmg: 3.0, time: 200}, desc:"[에픽] 거대 광역 맹독 폭발" },
+      SUBTOTAL: { type:"epic", req: ["SEARCH", "COUNT"], range: 150, rate: 18, dmg: 100, color: "#f39c12", name: "SUBTOT", splash: 90, stun: 30, desc:"[에픽] 광역 폭발 및 빙결" },
+
+      // 🔴 [전설 타워] (에픽 + 에픽)
+      LET: { type:"legend", req: ["COUNTIFS", "XLOOKUP"], range: 500, rate: 45, dmg: 1000, color: "#e84393", name: "LET", multi: 5, splash: 150, desc:"[전설] 맵 전역 5인 궤도 핵폭격" },
+
+      // 🌑 [히든 타워] (특수 극한 조합)
+      LAMBDA: { type:"hidden", req: ["LET", "POWER"], range: 400, rate: 5, dmg: 600, color: "#000", name: "LAMBDA", isBeam: true, splash: 120, pierce: true, chain: 5, desc:"[히든] 쉴드관통+광역+5연쇄 멸망 레이저" }
     };
+
+    function renderRecipeModal() {
+      let recipeHTML = ''; let infoHTML = '';
+      for (let key in TOWER_SPECS) {
+        const t = TOWER_SPECS[key];
+        const isDiscovered = discoveredTowers.has(key);
+        
+        // ❓ 타워 설명서 업데이트
+        if (t.type === 'base') {
+          infoHTML += `<div class="modal-item"><div class="m-title" style="color:${isDiscovered ? t.color : '#999'}">=${isDiscovered ? key : '???'}</div><div class="m-desc">${isDiscovered ? t.desc : '특정 티어 도달 시 해금됩니다.'}</div></div>`;
+        }
+        
+        // 📖 조합표 블라인드 처리 업데이트
+        if (t.req) {
+          if (isDiscovered) {
+            recipeHTML += `<div class="modal-item"><div class="m-title" style="color:${t.color}">=${key}</div><div class="m-sub">${t.req.join(' + ')}</div><div class="m-desc">${t.desc}</div></div>`;
+          } else {
+            recipeHTML += `<div class="modal-item"><div class="m-title" style="color:#999">???</div><div class="m-sub">??? + ???</div><div class="m-desc">아직 발견하지 못한 조합식입니다.</div></div>`;
+          }
+        }
+      }
+      document.getElementById('info-content').innerHTML = infoHTML; 
+      document.getElementById('recipe-content').innerHTML = recipeHTML;
+    }
 
     function initUI() {
       const container = document.getElementById('tower-selection');
-      const baseRow = document.createElement('div'); baseRow.className = 'tower-row'; baseRow.innerHTML = `<div class="tower-row-title" style="color:#27ae60">기본 (1조합)</div>`;
-      const epicRow = document.createElement('div'); epicRow.className = 'tower-row'; epicRow.innerHTML = `<div class="tower-row-title" style="color:var(--epic-color)">에픽 (2조합)</div>`;
-      const ancRow = document.createElement('div'); ancRow.className = 'tower-row'; ancRow.innerHTML = `<div class="tower-row-title" style="color:var(--ancient-color)">고대/히든 (3조합)</div>`;
+      container.innerHTML = ""; // 초기화
+      const rows = { 
+        base: `<div class="tower-row-title" style="color:#27ae60">기본 상점</div>`,
+        rare: `<div class="tower-row-title" style="color:#2980b9">레어 (기본+기본)</div>`,
+        epic: `<div class="tower-row-title" style="color:#d35400">에픽 (레어+레어)</div>`,
+        legend: `<div class="tower-row-title" style="color:#c0392b">전설/히든 (극한 조합)</div>`
+      };
       
-      let infoHTML = ''; let recipeHTML = '';
+      const rowDivs = {};
+      for(let r in rows) { 
+        rowDivs[r] = document.createElement('div'); 
+        rowDivs[r].className = 'tower-row'; 
+        rowDivs[r].innerHTML = rows[r]; 
+        container.appendChild(rowDivs[r]); 
+      }
+      
       for (let key in TOWER_SPECS) {
         const t = TOWER_SPECS[key];
-        const btn = document.createElement('button'); btn.className = `tower-btn ${t.type} ${key==='SUM'?'active':''}`; btn.dataset.type = key;
-        let label = `=${t.name}`;
-        if(t.type === 'base') { label += ` ($${t.cost})`; baseRow.appendChild(btn); infoHTML += `<div class="modal-item"><div class="m-title" style="color:${t.color}">=${key}</div><div class="m-desc">${t.desc}</div></div>`; } 
-        else if (t.type === 'epic') { epicRow.appendChild(btn); } 
-        else if (t.type === 'ancient') { ancRow.appendChild(btn); } 
-        else if (t.type === 'hidden') { btn.className = `tower-btn hidden-t`; label = "=LAMBDA"; ancRow.appendChild(btn); }
-        btn.innerText = label;
-
-        if (t.req) { recipeHTML += `<div class="modal-item"><div class="m-title" style="color:${t.type==='hidden'?'#2c3e50':t.color}">=${key}</div><div class="m-sub">${t.req.join(' + ')}</div><div class="m-desc">${t.desc}</div></div>`; }
+        const btn = document.createElement('button'); 
+        btn.className = `tower-btn ${t.type} ${key==='SUM'?'active':''}`; 
+        btn.dataset.type = key;
+        btn.innerText = t.type === 'base' ? `=${t.name} ($${t.cost})` : `=${t.name}`;
+        
+        let targetRow = t.type;
+        if (t.type === 'hidden') { btn.className = `tower-btn hidden-t`; btn.innerText = "=LAMBDA"; targetRow = 'legend'; }
+        
+        rowDivs[targetRow].appendChild(btn);
       }
-      container.appendChild(baseRow); container.appendChild(epicRow); container.appendChild(ancRow);
-      document.getElementById('info-content').innerHTML = infoHTML; document.getElementById('recipe-content').innerHTML = recipeHTML;
-
+      
       document.querySelectorAll(".tower-btn").forEach(btn => {
         btn.addEventListener("pointerdown", () => { Sound.init(); document.querySelectorAll(".tower-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); selectedTower = btn.dataset.type; });
       });
       resizeWindow();
+      renderRecipeModal();
+    }
+
+    function updateUI() {
+      const el = document.getElementById("enemy-count"); el.innerText = enemies.length;
+      el.className = ""; if (enemies.length < 100) el.classList.add("traffic-green"); else if (enemies.length < 200) el.classList.add("traffic-yellow"); else el.classList.add("traffic-red");
+      
+      const newTier = Math.floor(gameTime / 600) + 1; 
+      document.getElementById("budget").innerText = budget;
+      document.getElementById("tier-badge").innerText = `📈 티어: ${newTier} (${getDimName(newTier)})`;
+
+      if (newTier !== currentTier) {
+        currentTier = newTier; const newDimName = getDimName(currentTier);
+        if (newDimName !== currentDimName) {
+          currentDimName = newDimName; const dimObj = getDimObj(currentTier);
+          document.documentElement.style.setProperty('--bar-color', dimObj.bar);
+          document.getElementById('win-title').innerText = dimObj.title;
+          document.getElementById('formula-input').style.color = dimObj.bar;
+          Sound.dimShift();
+          floatingTexts.push(new FloatingText(880/2, 490/2 - 50, `차원 붕괴! [${currentDimName}] 유니버스 진입`, dimObj.bar, true, 80));
+        }
+      }
+
+      // 🎯 [신규] 티어 상승 시 기본 타워 해금 및 UI 업데이트 로직
+      let newlyDiscovered = false;
+      for (let key in TOWER_SPECS) {
+        if (TOWER_SPECS[key].type === "base" && currentTier >= TOWER_SPECS[key].unlockTier && !discoveredTowers.has(key)) {
+          discoveredTowers.add(key); newlyDiscovered = true;
+          floatingTexts.push(new FloatingText(880/2, 490/2, `신규 타워 [${key}] 상점 입고!`, TOWER_SPECS[key].color, true, 60));
+          Sound.synergy();
+        }
+      }
+      
+      if (newlyDiscovered) renderRecipeModal(); // 도감 갱신
+
+      // 해금된 타워 버튼만 표시 (스마트 조합 UI 포함)
+      const builtTowerTypes = towers.map(t => t.type); 
+      document.querySelectorAll(".tower-btn").forEach(btn => {
+        const type = btn.dataset.type; const spec = TOWER_SPECS[type];
+        
+        if (discoveredTowers.has(type)) {
+          btn.classList.add("revealed"); // 🎯 도감에 있으면 화면에 표시!
+        } else {
+          btn.classList.remove("revealed");
+        }
+
+        if (spec && spec.req) {
+          const canCraft = spec.req.every(reqType => builtTowerTypes.includes(reqType));
+          if (canCraft && discoveredTowers.has(type)) btn.classList.add("craftable"); 
+          else btn.classList.remove("craftable");
+        }
+      });
     }
 
     // --- 4. 사운드 엔진 ---
@@ -420,7 +499,9 @@
     };
 
     // --- 5. 게임 루프 및 클래스 객체 ---
-    let gameState = 0; let budget = 300; let selectedTower = "SUM"; let lastBossTier = 0; // 🎯 보스 중복 스폰 방지 변수
+    let gameState = 0; let budget = 300; let selectedTower = "SUM"; let lastBossTier = 0;
+    let lastBossTier = 0; 
+    let discoveredTowers = new Set(["SUM", "IFERROR", "MIN"]); // 🎯 초기 지급 타워 3인방// 🎯 보스 중복 스폰 방지 변수
     let gameTime = 0; let frame = 0; let screenShake = 0; let currentTier = 1; let currentDimName = "EXCEL"; let bsodFlash = 0;
 
     // --- 증강(Augment) 전역 변수 및 데이터 ---
@@ -956,7 +1037,23 @@ if (this.chainCount > 0) {
           const idx = towers.indexOf(t); if(idx > -1) towers.splice(idx, 1);
           if(highQuality) for(let i=0; i<8; i++) particles.push(new Particle(t.x, t.y, "#888", 3));
         });
+        // ... (기존 조합 시 환불 로직 유지) ...
         refundGold = Math.floor(refundGold); budget += refundGold;
+        
+        towers.push(new Tower(pos.col, pos.row, selectedTower)); 
+        Sound.synergy();
+
+        // 🎯 [추가됨] 처음으로 조합해 본 타워라면 도감에 등록하고 모달 갱신!
+        if (!discoveredTowers.has(selectedTower)) {
+          discoveredTowers.add(selectedTower);
+          renderRecipeModal(); // 도감 책에 내용이 적힙니다!
+          floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 30, `도감 등록 완료!`, "#3498db", true, 60));
+        }
+
+        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
+        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
+        updateUI(); return;
+      }
         towers.push(new Tower(pos.col, pos.row, selectedTower)); Sound.synergy();
         floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 15, `+$${refundGold} 환불!`, "#f1c40f", true, 45));
         floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H + 5, selectedTower === "LAMBDA" ? "HIDDEN!!" : "SYNERGY!", spec.color, true, 45));
@@ -1032,36 +1129,55 @@ if (this.chainCount > 0) {
     });
 
     function updateUI() {
-  const el = document.getElementById("enemy-count"); el.innerText = enemies.length;
-  el.className = ""; if (enemies.length < 100) el.classList.add("traffic-green"); else if (enemies.length < 200) el.classList.add("traffic-yellow"); else el.classList.add("traffic-red");
-  
-  const newTier = Math.floor(gameTime / 600) + 1; // 🎯 10초(600프레임)마다 티어 상승 복구!
-  
-  document.getElementById("budget").innerText = budget;
-  document.getElementById("tier-badge").innerText = `📈 티어: ${newTier} (${getDimName(newTier)})`;
+      const el = document.getElementById("enemy-count"); el.innerText = enemies.length;
+      el.className = ""; if (enemies.length < 100) el.classList.add("traffic-green"); else if (enemies.length < 200) el.classList.add("traffic-yellow"); else el.classList.add("traffic-red");
+      
+      const newTier = Math.floor(gameTime / 600) + 1; 
+      document.getElementById("budget").innerText = budget;
+      document.getElementById("tier-badge").innerText = `📈 티어: ${newTier} (${getDimName(newTier)})`;
 
-  if (newTier !== currentTier) {
-    currentTier = newTier; const newDimName = getDimName(currentTier);
-    if (newDimName !== currentDimName) {
-      currentDimName = newDimName; const dimObj = getDimObj(currentTier);
-      document.documentElement.style.setProperty('--bar-color', dimObj.bar);
-      document.getElementById('win-title').innerText = dimObj.title;
-      document.getElementById('formula-input').style.color = dimObj.bar;
-      Sound.dimShift();
-      floatingTexts.push(new FloatingText(880/2, 490/2 - 50, `차원 붕괴! [${currentDimName}] 유니버스 진입`, dimObj.bar, true, 80));
-    }
-  }
+      if (newTier !== currentTier) {
+        currentTier = newTier; const newDimName = getDimName(currentTier);
+        if (newDimName !== currentDimName) {
+          currentDimName = newDimName; const dimObj = getDimObj(currentTier);
+          document.documentElement.style.setProperty('--bar-color', dimObj.bar);
+          document.getElementById('win-title').innerText = dimObj.title;
+          document.getElementById('formula-input').style.color = dimObj.bar;
+          Sound.dimShift();
+          floatingTexts.push(new FloatingText(880/2, 490/2 - 50, `차원 붕괴! [${currentDimName}] 유니버스 진입`, dimObj.bar, true, 80));
+        }
+      }
 
-  // 🎯 스마트 조합 활성화 UI 로직
-  const builtTowerTypes = towers.map(t => t.type); 
-  document.querySelectorAll(".tower-btn").forEach(btn => {
-    const type = btn.dataset.type; const spec = TOWER_SPECS[type];
-    if (spec && spec.req) {
-      const canCraft = spec.req.every(reqType => builtTowerTypes.includes(reqType));
-      if (canCraft) btn.classList.add("craftable"); else btn.classList.remove("craftable");
+      // 🎯 [신규] 티어 상승 시 기본 타워 해금 및 UI 업데이트 로직
+      let newlyDiscovered = false;
+      for (let key in TOWER_SPECS) {
+        if (TOWER_SPECS[key].type === "base" && currentTier >= TOWER_SPECS[key].unlockTier && !discoveredTowers.has(key)) {
+          discoveredTowers.add(key); newlyDiscovered = true;
+          floatingTexts.push(new FloatingText(880/2, 490/2, `신규 타워 [${key}] 상점 입고!`, TOWER_SPECS[key].color, true, 60));
+          Sound.synergy();
+        }
+      }
+      
+      if (newlyDiscovered) renderRecipeModal(); // 도감 갱신
+
+      // 해금된 타워 버튼만 표시 (스마트 조합 UI 포함)
+      const builtTowerTypes = towers.map(t => t.type); 
+      document.querySelectorAll(".tower-btn").forEach(btn => {
+        const type = btn.dataset.type; const spec = TOWER_SPECS[type];
+        
+        if (discoveredTowers.has(type)) {
+          btn.classList.add("revealed"); // 🎯 도감에 있으면 화면에 표시!
+        } else {
+          btn.classList.remove("revealed");
+        }
+
+        if (spec && spec.req) {
+          const canCraft = spec.req.every(reqType => builtTowerTypes.includes(reqType));
+          if (canCraft && discoveredTowers.has(type)) btn.classList.add("craftable"); 
+          else btn.classList.remove("craftable");
+        }
+      });
     }
-  });
-}
 
     function togglePause() {
   const pauseBtn = document.getElementById("pause-btn");
