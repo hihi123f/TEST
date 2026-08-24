@@ -301,13 +301,15 @@
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
     const TOWER_SPECS = {
-      // 🎯 [수정됨] 해금 티어 연기: 3, 5, 8, 11, 14 티어에 순차적으로 오픈
       SUM: { type:"base", cost: 40, range: 110, rate: 16, dmg: 40, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
       IFERROR: { type:"base", cost: 60, range: 100, rate: 3, dmg: 10, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
       MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 60, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
       VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 110, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
       AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
-      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 2, time: 180 }, desc:"적에게 3초간 지속 독 데미지", unlockTier: 8 },
+      
+      // 🎯 [수정됨] 독 지속시간 7초(420프레임)로 증가, 프레임당 도트뎀 1.5 (7초간 총 630의 방관뎀)
+      RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 1.5, time: 420 }, desc:"적에게 7초간 서서히 피를 말리는 맹독 부여", unlockTier: 8 },
+      
       POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
       PIVOT: { type:"epic", req: ["AVERAGE", "RATE"], range: 170, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"인접 아군 타워 공격력 대폭(+50%~) 및 사거리 증가 오라" },
       MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
@@ -496,7 +498,9 @@
         else this.type = "NORMAL";
 
         this.baseSpeed = 1.3 + Math.min(2.5, tier * 0.1);
-        const baseHp = 35 * Math.pow(1.3, tier - 1);
+        
+        // 🎯 [수정됨] 체력 상승폭 대폭 완화 (기존 1.3 -> 1.15배수로 낮추어 후반 밸런스 조정)
+        const baseHp = 35 * Math.pow(1.15, tier - 1);
         this.maxShield = 0;
         
         const tagSplit = dimName==="EXCEL" ? "#SPILL!" : (dimName==="HWP" ? "구역나누기" : (dimName==="PPT" ? "슬라이드복제" : "Fork()"));
@@ -577,10 +581,14 @@
           }
         }
 
+        // 🎯 [수정됨] 7초 부드러운 맹독 시각 효과 (프레임마다 데미지 깎고, 45프레임마다 텍스트 팝업)
         if (this.poisonTimer > 0) {
           this.poisonTimer--;
           this.hp -= this.poisonDmg; 
-          if (frame % 30 === 0 && Math.random() > 0.3) floatingTexts.push(new FloatingText(this.x, this.y - 20, "독!", "#2ecc71", false, 30));
+          if (frame % 45 === 0) {
+            // 위치를 살짝씩 흔들어 보글거리는 느낌 연출
+            floatingTexts.push(new FloatingText(this.x + (Math.random() - 0.5) * 15, this.y - 20, "🫧독", "#2ecc71", false, 35));
+          }
         }
 
         if (this.stunTimer > 0) { this.stunTimer--; this.hitFlash = Math.max(this.hitFlash, 1); } 
