@@ -136,7 +136,7 @@
       <div class="stat-badge">💰 예산: $<span id="budget">300</span></div>
       <div class="stat-badge" id="tier-badge">📈 티어: 1 (EXCEL)</div>
       
-      <!-- 🎯 [추가됨] 로컬스토리지 최고 기록 뱃지 -->
+      <!-- 🎯 로컬스토리지 최고 기록 뱃지 -->
       <div class="stat-badge" style="color:#d35400;">🏆 최고 기록: <span id="best-tier-badge">1</span></div>
       
       <div style="margin-left: auto; display:flex;">
@@ -183,7 +183,7 @@
         <div id="start-overlay" class="overlay">
           <h1 style="color: #4cd137;">Multiverse Defense</h1>
           <div style="color:#ddd; margin-bottom: 25px; text-align:center; line-height: 1.6;">
-            <b>🛠️ 아레나 증강 업데이트!</b><br/><br/>
+            <b>🛠️ 아레나 증강 & 도감 업데이트!</b><br/><br/>
             - 타워를 <b>우클릭(모바일 길게 터치)</b> 시 판매됩니다.<br/>
             - 15 스테이지마다 보스가 확정 출현하며 증강을 줍니다.<br/>
             - 미발견 상위 타워는 직접 조합해야 도감에 해금됩니다.
@@ -214,14 +214,14 @@
   </div>
 
   <script>
-    // 🎯 [수정됨] 로컬스토리지 연동 (품질 설정, 최고 기록, 도감)
+    // 🎯 로컬스토리지 연동 (품질 설정, 최고 기록, 도감)
     let highQuality = localStorage.getItem("md_quality") === "false" ? false : true;
     let bestTier = parseInt(localStorage.getItem("md_best_tier")) || 1;
     let discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
 
     function toggleQuality() {
       highQuality = !highQuality;
-      localStorage.setItem("md_quality", highQuality); // 상태 저장
+      localStorage.setItem("md_quality", highQuality); 
       const btn = document.getElementById("quality-btn");
       btn.innerText = highQuality ? "⚙️ 품질: 높음" : "⚙️ 품질: 낮음";
       btn.style.background = highQuality ? "#16a085" : "#7f8c8d";
@@ -315,10 +315,7 @@
       MIN: { type:"base", cost: 70, range: 100, rate: 45, dmg: 60, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
       VLOOKUP: { type:"base", cost: 90, range: 145, rate: 50, dmg: 110, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
       AVERAGE: { type:"base", cost: 100, range: 125, rate: 35, dmg: 40, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
-      
-      // 🎯 [수정됨] 독 지속시간 7초(420프레임)로 증가, 프레임당 도트뎀 1.5 (7초간 총 630의 방관뎀)
       RATE: { type:"base", cost: 80, range: 120, rate: 30, dmg: 30, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 1.5, time: 420 }, desc:"적에게 7초간 서서히 피를 말리는 맹독 부여", unlockTier: 8 },
-      
       POWER: { type:"base", cost: 100, range: 110, rate: 40, dmg: 70, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
       PIVOT: { type:"epic", req: ["AVERAGE", "RATE"], range: 170, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"인접 아군 타워 공격력 대폭(+50%~) 및 사거리 증가 오라" },
       MAX: { type:"base", cost: 130, range: 240, rate: 75, dmg: 350, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
@@ -345,8 +342,6 @@
       LAMBDA: { type:"hidden", req: ["VLOOKUP", "MAX", "IFERROR"], range: 260, rate: 5, dmg: 400, color: "#000", name: "LAMBDA", isBeam: true, splash: 120, pierce: true, desc:"[히든] 쉴드관통+슬로우+광역파괴 레이저" }
     };
 
-    let discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
-
     function renderSidebarAndModals() {
       const container = document.getElementById('tower-selection');
       container.innerHTML = '';
@@ -364,7 +359,8 @@
         
         if(t.type === 'base') { 
           if (currentTier >= t.unlockTier) {
-            btn.innerText = `=${t.name} ($${t.cost})`; 
+            const displayCost = Math.floor(t.cost * baseCostMult);
+            btn.innerText = `=${t.name} ($${displayCost})`; 
             infoHTML += `<div class="modal-item"><div class="m-title" style="color:${t.color}">=${key}</div><div class="m-desc">${t.desc}</div></div>`; 
           } else {
             btn.innerText = `[T${t.unlockTier} 해금]`;
@@ -484,6 +480,7 @@
              document.getElementById("augment-overlay").style.display = "none";
              floatingTexts.push(new FloatingText(880/2, 490/2, `[${aug.name}] 적용 완료!`, "#00ff00", true, 80));
              Sound.synergy(); updateUI();
+             renderSidebarAndModals(); // 알뜰살뜰 등 사이드바 비용 갱신
              gameState = 1; requestAnimationFrame(gameLoop);
          };
          container.appendChild(card);
@@ -507,8 +504,6 @@
         else this.type = "NORMAL";
 
         this.baseSpeed = 1.3 + Math.min(2.5, tier * 0.1);
-        
-        // 🎯 [수정됨] 체력 상승폭 대폭 완화 (기존 1.3 -> 1.15배수로 낮추어 후반 밸런스 조정)
         const baseHp = 35 * Math.pow(1.15, tier - 1);
         this.maxShield = 0;
         
@@ -590,12 +585,10 @@
           }
         }
 
-        // 🎯 [수정됨] 7초 부드러운 맹독 시각 효과 (프레임마다 데미지 깎고, 45프레임마다 텍스트 팝업)
         if (this.poisonTimer > 0) {
           this.poisonTimer--;
           this.hp -= this.poisonDmg; 
           if (frame % 45 === 0) {
-            // 위치를 살짝씩 흔들어 보글거리는 느낌 연출
             floatingTexts.push(new FloatingText(this.x + (Math.random() - 0.5) * 15, this.y - 20, "🫧독", "#2ecc71", false, 35));
           }
         }
@@ -618,7 +611,6 @@
         if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg; }
 
         let actualDmg = dmg;
-        
         if (giantSlayer > 0) actualDmg += this.hp * giantSlayer;
         
         let isCrit = false;
@@ -637,6 +629,12 @@
           if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
           else { this.shield -= actualDmg; } 
         } else { this.hp -= actualDmg; }
+
+        if (this.hp > 0 && executeThreshold > 0 && this.hp <= this.maxHp * executeThreshold) {
+            this.hp = 0;
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, "처형!", "#ff0000", true, 40));
+            if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, 50, "#ff0000"));
+        }
         
         if (this.shield <= 0 && stunTime > 0) this.stunTimer = Math.max(this.stunTimer, stunTime);
 
@@ -646,12 +644,6 @@
           enemies.push(new ErrorEnemy(this.tier, false, "NORMAL", Math.max(0, this.progress + 0.01), this.track));
           floatingTexts.push(new FloatingText(this.x, this.y, "분열!", "#9b59b6", true, 40));
           if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, 45, "#9b59b6"));
-        }
-        
-        if (this.hp > 0 && executeThreshold > 0 && this.hp <= this.maxHp * executeThreshold) {
-            this.hp = 0;
-            floatingTexts.push(new FloatingText(this.x, this.y - 30, "처형!", "#ff0000", true, 40));
-            if(highQuality) shockwaves.push(new Shockwave(this.x, this.y, 50, "#ff0000"));
         }
 
         this.hitFlash = this.stunTimer > 0 ? 1 : 3; this.scale = this.baseScale * 1.2;
@@ -713,7 +705,10 @@
         this.col = col; this.row = row; const pos = gridToPixel(col, row);
         this.x = pos.x; this.y = pos.y; this.type = type; this.baseSpec = TOWER_SPECS[type];
         this.isSynergy = !!this.baseSpec.req; this.level = 1; 
-        this.totalSpent = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : this.baseSpec.cost;
+        
+        const initialCost = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : Math.floor(this.baseSpec.cost * baseCostMult);
+        this.totalSpent = initialCost;
+        
         this.cooldown = 0; this.recoil = 0; this.laserTargets = [];
         this.totalDamageDealt = 0; 
         this.updateStats(); 
@@ -1061,11 +1056,15 @@
         updateUI(); return;
       }
       
-      if (budget >= spec.cost) { 
-        budget -= spec.cost; 
+      const actualCost = Math.floor(spec.cost * baseCostMult);
+      if (budget >= actualCost) { 
+        budget -= actualCost; 
         towers.push(new Tower(pos.col, pos.row, selectedTower)); 
         towers.forEach(t => t.updateStats()); 
         updateUI(); 
+      } else {
+        Sound.error();
+        floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H, "예산 부족!", "#e74c3c", true, 30));
       }
     });
 
@@ -1151,7 +1150,6 @@
           enemies.push(new ErrorEnemy(currentTier, true)); 
         }
         
-        // 🎯 [추가됨] 화면 중앙 타워 해금 알림 텍스트
         let newlyUnlocked = [];
         for (let key in TOWER_SPECS) {
           if (TOWER_SPECS[key].type === 'base' && TOWER_SPECS[key].unlockTier === currentTier) {
@@ -1160,7 +1158,7 @@
         }
         if (newlyUnlocked.length > 0) {
           floatingTexts.push(new FloatingText(880/2, 490/2 + 30, `🔓 신규 상점 타워 해금: ${newlyUnlocked.join(", ")}`, "#f1c40f", true, 90));
-          Sound.synergy(); // 띠링! 하는 해금 효과음
+          Sound.synergy(); 
         }
 
         renderSidebarAndModals();
@@ -1262,7 +1260,6 @@
         if (enemies.length >= MAX_ENEMIES) {
           gameState = 2; Sound.hit("MAX", true);
           
-          // 🎯 [추가됨] 로컬스토리지 최고 기록 갱신 로직
           if (currentTier > bestTier) {
               bestTier = currentTier;
               localStorage.setItem("md_best_tier", bestTier);
@@ -1345,7 +1342,6 @@
     }
     
     window.onload = () => { 
-      // 🎯 [추가됨] 로컬스토리지 설정값 및 최고기록 UI 초기 반영
       document.getElementById("best-tier-badge").innerText = bestTier;
       const qBtn = document.getElementById("quality-btn");
       qBtn.innerText = highQuality ? "⚙️ 품질: 높음" : "⚙️ 품질: 낮음";
