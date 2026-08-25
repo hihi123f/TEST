@@ -222,15 +222,18 @@
   </div>
 
   <script>
+    // 🎯 로컬스토리지 예외처리 및 데이터 오염 절대 방어
     let highQuality = true;
     let bestTier = 1;
     let discoveredRecipes = [];
     
     try {
-        highQuality = localStorage.getItem("md_quality") === "false" ? false : true;
-        bestTier = parseInt(localStorage.getItem("md_best_tier")) || 1;
-        discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
-    } catch (e) { console.warn("로컬스토리지 차단됨"); }
+        if (localStorage.getItem("md_quality") === "false") highQuality = false;
+        let bt = parseInt(localStorage.getItem("md_best_tier"));
+        if (!isNaN(bt)) bestTier = bt;
+        let recipes = JSON.parse(localStorage.getItem("multiverse_recipes"));
+        if (Array.isArray(recipes)) discoveredRecipes = recipes;
+    } catch (e) { console.warn("로컬스토리지 오류 방어 완료", e); }
 
     function toggleQuality() {
       highQuality = !highQuality;
@@ -361,17 +364,13 @@
     function getDimObj(tier) { if (tier < 30) return DIMENSIONS.EXCEL; if (tier < 60) return DIMENSIONS.HWP; if (tier < 90) return DIMENSIONS.PPT; return DIMENSIONS.DEV; }
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
-    // 🎯 타워 스탯: 독뎀 타워 밸런스 극대화, 그 외 너프/버프 적용
     const TOWER_SPECS = {
       SUM: { type:"base", cost: 40, range: 100, rate: 24, dmg: 20, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
       IFERROR: { type:"base", cost: 60, range: 90, rate: 5, dmg: 5, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
       MIN: { type:"base", cost: 70, range: 90, rate: 65, dmg: 35, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
       VLOOKUP: { type:"base", cost: 90, range: 130, rate: 75, dmg: 60, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
       AVERAGE: { type:"base", cost: 100, range: 110, rate: 55, dmg: 20, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
-      
-      // 🎯 RATE(독) 타워: 기본공격 극악 하향 (2), 독 지속딜 대폭 상향(3.5*7초 = 1470딜)
       RATE: { type:"base", cost: 80, range: 105, rate: 45, dmg: 2, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 3.5, time: 420 }, desc:"[독특화] 타격뎀 대폭 감소, 7초간 치명적 맹독", unlockTier: 8 },
-      
       POWER: { type:"base", cost: 100, range: 100, rate: 60, dmg: 40, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
       MAX: { type:"base", cost: 130, range: 220, rate: 110, dmg: 200, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
       
@@ -644,7 +643,6 @@
         
         this.hp = this.maxHp; this.shield = this.maxShield; this.currentSpeed = this.speed;
         
-        // 🎯 [너프됨] 처치 골드 극악 하향
         this.reward = isBoss ? 50 : (this.type==="TANK" || this.type==="SPLITTER" ? 3 : 1);
         
         this.track = track || (Math.random() > 0.5 ? pathOuterPx : pathInnerPx);
@@ -731,7 +729,6 @@
         this.updateCoords();
       }
       
-      // 🎯 맹독 타워 독뎀 파라미터 연동
       takeDamage(dmg, pierce = false, stunTime = 0, poisonTime = 0, poisonDmg = 0) {
         if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return 0; }
         if (poisonTime > 0) { 
@@ -885,7 +882,6 @@
         if (!this.baseSpec.splash && !this.baseSpec.multi && !this.baseSpec.isBeam) finalDmg *= singleTargetBuff; 
         this.dmg = finalDmg;
 
-        // 🎯 맹독 타워 독 데미지 스케일링 동기화 (업그레이드 시 도트딜 폭증)
         if (this.baseSpec.poisonSpec) {
           this.poisonDmg = (this.baseSpec.poisonSpec.dmg * Math.pow(1.45, this.level - 1)) * globalDmgMult * auraDmgMult;
           if (this.isSynergy) this.poisonDmg *= synergyDmgMult;
@@ -933,7 +929,7 @@
         if (this.baseSpec.aura && frame % 90 === 0) { 
             if (highQuality) shockwaves.push(new Shockwave(this.x, this.y, this.range, this.baseSpec.color)); 
         }
-        if (this.dmg <= 0) return; 
+        if (this.dmg <= 0 && this.poisonDmg <= 0) return; 
 
         let targets = [];
         if (this.baseSpec.multi) {
@@ -1062,7 +1058,6 @@
           }
           
           if (nextTarget) {
-            // 🎯 번개 튕길 때 3색 이펙트 구현
             const colors = ["#f1c40f", "#3498db", "#111111"];
             const lColor = colors[Math.floor(Math.random() * colors.length)];
             if(highQuality) lightnings.push(new LightningEffect(this.target.x, this.target.y, nextTarget.x, nextTarget.y, lColor));
@@ -1070,7 +1065,7 @@
             let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
             nextProj.chainCount = this.chainCount - 1; 
             nextProj.speed = this.speed * 3.5; 
-            nextProj.currentDmg = this.currentDmg * 0.95; // 🎯 번개 연쇄 시 5% 데미지 감소 너프 적용
+            nextProj.currentDmg = this.currentDmg * 0.95; 
             projectiles.push(nextProj);
           }
         }
@@ -1412,34 +1407,6 @@
       goFullscreen(); Sound.init(); 
       document.getElementById("start-overlay").style.display = "none"; 
       gameState = 1; requestAnimationFrame(gameLoop); 
-    };
-
-    window.restartGame = function() {
-      Sound.init(); document.getElementById("game-over-overlay").style.display = "none";
-      towers = []; enemies = []; projectiles = []; particles = []; floatingTexts = []; shockwaves = []; lightnings = [];
-      budget = 100; gameTime = 0; frame = 0; screenShake = 0; currentTier = 1; currentDimName = "EXCEL";
-      document.documentElement.style.setProperty('--bar-color', '#107c41');
-      document.getElementById('win-title').innerText = "📊 Multiverse_Defense.xlsx - Ultimate Edition";
-      
-      globalDmgMult = 1.0; globalCostMult = 1.0; globalRateMult = 1.0; globalRangeMult = 1.0; refundRate = 0.7;
-      executeThreshold = 0; deathExplosion = false; baseCostMult = 1.0; poisonSpread = false;
-      critChance = 0; critMultiplier = 2.0;
-      bossHitGold = 0; chainMultiplier = 1; chainRangeMult = 1.0; synergyDmgMult = 1.0; MAX_ENEMIES = 300;
-      doubleCast = false; stunnedDmgMult = 1.0; cosmicRuin = false; giantSlayer = 0;
-      budgetDmgMult = false; shieldDmgMult = 1.0; healthyEnemyBuff = 1.0; goldMultiplier = 1.0;
-      singleTargetBuff = 1.0; poisonDmgMult = 1.0; shatterShield = false; passiveIncome = 0;
-      beamBuff = 1.0; pierceAll = false;
-      
-      activeAugments = []; 
-      stat_execute = 0; stat_explosion = 0; stat_discount = 0; stat_poisonSpread = 0;
-      stat_critDmg = 0; stat_gamble = 0; stat_bossGold = 0; stat_doubleCast = 0;
-      stat_freezeDmg = 0; stat_cosmicDmg = 0; stat_giantDmg = 0; stat_mansour = 0;
-      
-      rerolls = 2;
-      globalDamageStats = {};
-
-      updateUI(); renderSidebarAndModals(); 
-      gameState = 1; requestAnimationFrame(gameLoop);
     };
 
     let lastTimestamp = 0; 
