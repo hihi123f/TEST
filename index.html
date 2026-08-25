@@ -382,37 +382,40 @@
 
     const TOWER_SPECS = {
       // 🟩 1. 일반 타워 (8종)
-      SUM: { type:"base", cost: 40, range: 100, rate: 24, dmg: 20, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
-      IFERROR: { type:"base", cost: 60, range: 90, rate: 5, dmg: 5, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
-      MIN: { type:"base", cost: 70, range: 90, rate: 65, dmg: 35, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
-      VLOOKUP: { type:"base", cost: 90, range: 130, rate: 75, dmg: 60, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
-      AVERAGE: { type:"base", cost: 100, range: 110, rate: 55, dmg: 20, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
-      RATE: { type:"base", cost: 80, range: 105, rate: 45, dmg: 5, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 5.0, time: 420 }, desc:"적에게 7초간 서서히 피를 말리는 맹독 부여", unlockTier: 8 },
-      POWER: { type:"base", cost: 100, range: 100, rate: 60, dmg: 40, color: "#ffd700", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
-      MAX: { type:"base", cost: 130, range: 220, rate: 110, dmg: 200, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
+      SUM: { type:"base", cost: 40, range: 100, rate: 24, dmg: 10, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
+      IFERROR: { type:"base", cost: 60, range: 90, rate: 5, dmg: 3, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
+      MIN: { type:"base", cost: 70, range: 90, rate: 65, dmg: 17, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
+      VLOOKUP: { type:"base", cost: 90, range: 130, rate: 75, dmg: 30, color: "#0078d4", name: "VLOOK", splash: 75, desc:"주변 적 광역(Splash) 타격", unlockTier: 3 },
+      AVERAGE: { type:"base", cost: 100, range: 110, rate: 55, dmg: 10, color: "#9b59b6", name: "AVG", multi: 3, desc:"3명의 적을 동시 타격", unlockTier: 5 },
+      // 🎯 독 깡딜 절반 너프, 도트딜 상향
+      RATE: { type:"base", cost: 80, range: 105, rate: 45, dmg: 2, color: "#2ecc71", name: "RATE", poisonSpec: { dmg: 12.0, time: 420 }, desc:"적에게 7초간 서서히 피를 말리는 맹독 부여", unlockTier: 8 },
+      POWER: { type:"base", cost: 100, range: 100, rate: 60, dmg: 20, color: "#ffd700", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
+      MAX: { type:"base", cost: 130, range: 220, rate: 110, dmg: 100, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
       
       // 🟦 2. 레어 타워 (8종) - [일반 + 일반] 조합
-      SUMIF: { type:"rare", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 150, color: "#e67e22", name: "SUMIF", pierce: true, desc:"[관통] 방어 쉴드 무시 직접 타격" },
-      MATCH: { type:"rare", req: ["MIN", "VLOOKUP"], range: 140, rate: 50, dmg: 100, color: "#2980b9", name: "MATCH", splash: 90, stun: 15, desc:"[폭발+기절] 얼어붙는 범위 폭발" },
+      SUMIF: { type:"rare", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 75, color: "#e67e22", name: "SUMIF", pierce: true, desc:"[관통] 방어 쉴드 무시 직접 타격" },
+      MATCH: { type:"rare", req: ["MIN", "VLOOKUP"], range: 140, rate: 50, dmg: 50, color: "#2980b9", name: "MATCH", splash: 90, stun: 15, desc:"[폭발+기절] 얼어붙는 범위 폭발" },
       PIVOT: { type:"rare", req: ["AVERAGE", "RATE"], range: 170, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"[오라] 인접 타워 공격력 및 사거리 버프" },
-      COUNTIFS: { type:"rare", req: ["POWER", "MAX"], range: 180, rate: 4, dmg: 50, color: "#1abc9c", name: "CNTIFS", desc:"[단일] 초고속 연사 기관총" },
-      SUBTOTAL: { type:"rare", req: ["SUM", "VLOOKUP"], range: 130, rate: 18, dmg: 80, color: "#d35400", name: "SUBTOT", splash: 65, desc:"[폭발] 빠른 속도의 광역 폭격기" },
-      SMALL: { type:"rare", req: ["MIN", "RATE"], range: 130, rate: 12, dmg: 15, color: "#fdcb6e", name: "SMALL", stun: 10, poisonSpec: { dmg: 8.0, time: 200 }, desc:"[기절+맹독] 얼음 독가스 방출" },
-      PRODUCT: { type:"rare", req: ["AVERAGE", "POWER"], range: 130, rate: 25, dmg: 90, color: "#1e90ff", name: "PROD", chain: 5, desc:"[번개] 고속 5연쇄 번개 방출" },
-      EXACT: { type:"rare", req: ["IFERROR", "MAX"], range: 260, rate: 3, dmg: 120, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"[단일+둔화] 초장거리 저격 슬로우 빔" },
+      COUNTIFS: { type:"rare", req: ["POWER", "MAX"], range: 180, rate: 4, dmg: 25, color: "#1abc9c", name: "CNTIFS", desc:"[단일] 초고속 연사 기관총" },
+      SUBTOTAL: { type:"rare", req: ["SUM", "VLOOKUP"], range: 130, rate: 18, dmg: 40, color: "#d35400", name: "SUBTOT", splash: 65, desc:"[폭발] 빠른 속도의 광역 폭격기" },
+      // 🎯 독 깡딜 절반 너프, 도트딜 대폭 상향
+      SMALL: { type:"rare", req: ["MIN", "RATE"], range: 130, rate: 12, dmg: 7, color: "#fdcb6e", name: "SMALL", stun: 10, poisonSpec: { dmg: 25.0, time: 200 }, desc:"[기절+맹독] 얼음 독가스 방출" },
+      PRODUCT: { type:"rare", req: ["AVERAGE", "POWER"], range: 130, rate: 25, dmg: 45, color: "#1e90ff", name: "PROD", chain: 5, desc:"[번개] 고속 5연쇄 번개 방출" },
+      EXACT: { type:"rare", req: ["IFERROR", "MAX"], range: 260, rate: 3, dmg: 60, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"[단일+둔화] 초장거리 저격 슬로우 빔" },
 
       // 🟪 3. 에픽 타워 (4종) - [레어 + 레어] 조합
-      INDEXMATCH: { type:"epic", req: ["SUMIF", "MATCH"], range: 200, rate: 50, dmg: 400, color: "#f1c40f", name: "IDXMAT", splash: 150, stun: 20, desc:"[대폭발+기절] 엄청난 범위의 광역 빙결 폭발" },
-      XLOOKUP: { type:"epic", req: ["PIVOT", "COUNTIFS"], range: 220, rate: 4, dmg: 180, color: "#e74c3c", name: "XLOOK", pierce: true, desc:"[단일+관통] 쉴드를 찢어버리는 플라즈마 연사" },
-      FILTER: { type:"epic", req: ["SUBTOTAL", "PRODUCT"], range: 280, rate: 10, dmg: 350, color: "#111111", name: "FILTER", splash: 80, chain: 10, desc:"[광역 번개] 10연쇄 초고압 폭발 번개" },
-      XMATCH: { type:"epic", req: ["SMALL", "EXACT"], range: 240, rate: 3, dmg: 150, color: "#c0392b", name: "XMAT", multi: 5, isBeam: true, stun: 12, desc:"[다중+마비] 5갈래 초장거리 마비 광선" },
+      INDEXMATCH: { type:"epic", req: ["SUMIF", "MATCH"], range: 200, rate: 50, dmg: 200, color: "#f1c40f", name: "IDXMAT", splash: 150, stun: 20, desc:"[대폭발+기절] 엄청난 범위의 광역 빙결 폭발" },
+      XLOOKUP: { type:"epic", req: ["PIVOT", "COUNTIFS"], range: 220, rate: 4, dmg: 90, color: "#e74c3c", name: "XLOOK", pierce: true, desc:"[단일+관통] 쉴드를 찢어버리는 플라즈마 연사" },
+      // 🎯 에픽 번개(FILTER): 스플래시 속성 제거! (splash 삭제됨), 검정색 변경
+      FILTER: { type:"epic", req: ["SUBTOTAL", "PRODUCT"], range: 280, rate: 10, dmg: 175, color: "#111111", name: "FILTER", chain: 10, desc:"[연쇄 번개] 10연쇄 초고압 번개 방출" },
+      XMATCH: { type:"epic", req: ["SMALL", "EXACT"], range: 240, rate: 3, dmg: 75, color: "#c0392b", name: "XMAT", multi: 5, isBeam: true, stun: 12, desc:"[다중+마비] 5갈래 초장거리 마비 광선" },
 
       // 🟥 4. 전설 타워 (2종) - [에픽 + 에픽] 조합
-      LET: { type:"legend", req: ["INDEXMATCH", "XLOOKUP"], range: 300, rate: 25, dmg: 2500, color: "#f39c12", name: "LET", splash: 80, multi: 5, pierce: true, desc:"[전설] 5인 동시 타격 궤도 폭격 (관통+스플래시)" },
-      RANDARRAY: { type:"legend", req: ["FILTER", "XMATCH"], range: 300, rate: 4, dmg: 600, color: "#e84393", name: "RAND", multi: 10, isBeam: true, aura: true, stun: 15, desc:"[전설] 초광역 버프 및 10갈래 파멸의 광선" },
+      LET: { type:"legend", req: ["INDEXMATCH", "XLOOKUP"], range: 300, rate: 25, dmg: 1250, color: "#f39c12", name: "LET", splash: 80, multi: 5, pierce: true, desc:"[전설] 5인 동시 타격 궤도 폭격 (관통+스플래시)" },
+      RANDARRAY: { type:"legend", req: ["FILTER", "XMATCH"], range: 300, rate: 4, dmg: 300, color: "#e84393", name: "RAND", multi: 10, isBeam: true, aura: true, stun: 15, desc:"[전설] 초광역 버프 및 10갈래 파멸의 광선" },
 
       // ⬛ 5. 히든 타워 (1종) - [레어 + 레어 + 레어] 비밀 조합
-      LAMBDA: { type:"hidden", req: ["COUNTIFS", "SUBTOTAL", "PIVOT"], range: 350, rate: 2, dmg: 999, color: "#000", name: "LAMBDA", splash: 120, pierce: true, desc:"[히든] 차원을 붕괴시키는 절대 무기" }
+      LAMBDA: { type:"hidden", req: ["COUNTIFS", "SUBTOTAL", "PIVOT"], range: 350, rate: 2, dmg: 500, color: "#000", name: "LAMBDA", splash: 120, pierce: true, desc:"[히든] 차원을 붕괴시키는 절대 무기" }
     };
 
     function renderSidebarAndModals() {
@@ -915,7 +918,7 @@
         // 🎯 [너프됨] 업그레이드 비용 1.5배 증가
         const baseCost = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : (this.baseSpec.cost * baseCostMult);
         this.upgradeCost = Math.floor((baseCost * Math.pow(1.2, this.level) * 1.5) * globalCostMult);
-      } // <-- 괄호 닫기 주의!
+      }
       
       upgrade() {
         const maxLvl = this.baseSpec.type === "base" ? 5 : (this.baseSpec.type === "epic" ? 10 : 15);
@@ -1004,6 +1007,7 @@
           this.laserTargets.forEach(t => { if(!enemies.includes(t)) return; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(t.x, t.y); ctx.stroke(); });
         }
       }
+    }
 
     class Projectile {
       constructor(x, y, target, tower, hitSet = new Set(), chainDmgMult = 1.0) {
@@ -1023,7 +1027,6 @@
         return false;
       }
       
-      // 👇 여기서부터 hit() 함수 내용 👇
       hit() {
         this.hitSet.add(this.target);
 
@@ -1081,18 +1084,6 @@
           }
         }
       }
-      // 👆 여기까지 hit() 함수 내용 👆
-      
-      draw() {
-        ctx.fillStyle = this.tower.baseSpec.color;
-        if (this.tower.baseSpec.chain) return;
-
-        if (this.tower.baseSpec.splash || this.tower.type.includes("MAX") || this.tower.type.includes("LARGE") || this.tower.type.includes("LET")) { 
-          ctx.beginPath(); ctx.arc(this.x, this.y, this.tower.baseSpec.splash ? 5 : 4, 0, Math.PI * 2); ctx.fill(); 
-        } 
-        else { ctx.font = "bold 14px monospace"; ctx.fillText(";", this.x, this.y); }
-      }
-    }
       
       draw() {
         ctx.fillStyle = this.tower.baseSpec.color;
