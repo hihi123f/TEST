@@ -2,31 +2,68 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>500만 개... 까진 아니지만 건초 뽑기 게임</title>
+  <!-- 모바일 최적화: 화면 확대/축소 방지, 꽉 찬 화면 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>건초 더미에서 바늘 찾기 (Mobile)</title>
   <style>
-    body {
+    body, html {
       margin: 0;
-      background: #11100f;
-      color: #dcd7cd;
-      font-family: sans-serif;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #111;
+      color: #eee;
+      font-family: 'Pretendard', sans-serif;
+      overflow: hidden; /* 스크롤 방지 */
+      touch-action: none; /* 브라우저 기본 터치 액션(새로고침 등) 완벽 차단 */
+    }
+    #ui {
+      position: absolute;
+      top: 5%;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      pointer-events: none; /* UI가 터치를 방해하지 않게 */
+      z-index: 10;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    h2 { margin: 0; font-size: 22px; color: #f1c40f; }
+    p { margin: 8px 0 0 0; font-size: 15px; color: #aaa; }
+    #count { color: #fff; font-weight: bold; }
+    
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #1c1712;
+    }
+
+    #win-screen {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      overflow: hidden;
-      user-select: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+      z-index: 20;
     }
-    #ui {
-      margin-bottom: 15px;
-      text-align: center;
+    #win-screen.show {
+      opacity: 1;
+      pointer-events: auto;
     }
-    h2 { margin: 0 0 5px 0; color: #f1c40f; font-size: 20px; }
-    p { margin: 0; font-size: 14px; color: #888; }
-    canvas {
-      border: 3px solid #332b22;
-      background: #1c1712;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    .btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: #f1c40f;
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
       cursor: pointer;
     }
   </style>
@@ -34,71 +71,102 @@
 <body>
 
   <div id="ui">
-    <h2>🌾 건초 더미에서 바늘 찾기 (The Haystack)</h2>
-    <p id="status-msg">마우스 클릭으로 건초 조각을 하나씩 뽑아내세요! (남은 건초: <span id="count">0</span>개)</p>
+    <h2>🌾 건초 파헤치기</h2>
+    <p>손가락으로 문질러 바늘을 찾으세요!<br>남은 건초: <span id="count">0</span>개</p>
   </div>
 
-  <canvas id="gameCanvas" width="700" height="500"></canvas>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="win-screen">
+    <h1 style="color:#00ffff; margin:0 0 10px 0;">🎉 바늘 발견!</h1>
+    <p style="color:#ddd; margin-bottom: 20px; font-size:16px;">당신의 집요함이 승리했습니다.</p>
+    <button class="btn" onclick="initGame()">다시 도전하기</button>
+  </div>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const countDisplay = document.getElementById('count');
-    const statusMsg = document.getElementById('status-msg');
+    const winScreen = document.getElementById('win-screen');
 
-    const WIDTH = canvas.width;
-    const HEIGHT = canvas.height;
-
-    // 건초 더미 데이터 (빽빽하게 깔린 선 배열)
+    let WIDTH, HEIGHT;
     let hays = [];
     let needle = { x: 0, y: 0, found: false };
+    
+    // 모바일 폰 사양을 고려해 건초 개수 타협 (충분히 많아 보임)
+    const MAX_HAYS = 3500; 
+    const TOUCH_RADIUS = 45; // 손가락으로 문지르는 범위 (지우개 크기)
+
+    function resize() {
+      WIDTH = window.innerWidth;
+      HEIGHT = window.innerHeight;
+      canvas.width = WIDTH;
+      canvas.height = HEIGHT;
+      draw(); // 크기 변경 시 화면 다시 그리기
+    }
 
     function initGame() {
-      hays = [];
+      winScreen.classList.remove('show');
       needle.found = false;
-      
-      // 바늘 위치 랜덤 선정 (화면 중앙 부근)
-      needle.x = WIDTH / 2 + (Math.random() - 0.5) * 200;
-      needle.y = HEIGHT / 2 + (Math.random() - 0.5) * 200;
+      hays = [];
 
-      // 빽빽한 건초 생성 (약 2,500개 - 웹에서 부드럽게 돌아가는 최대치)
-      for (let i = 0; i < 2500; i++) {
+      // 바늘은 화면 중앙을 기준으로 70% 영역 안쪽 어딘가에 랜덤 배치
+      needle.x = (WIDTH * 0.15) + Math.random() * (WIDTH * 0.7);
+      needle.y = (HEIGHT * 0.15) + Math.random() * (HEIGHT * 0.7);
+
+      // 건초 생성 (화면 중앙 위주로 뭉치게)
+      for (let i = 0; i < MAX_HAYS; i++) {
         hays.push({
-          x: WIDTH / 2 + (Math.random() - 0.5) * 350,
-          y: HEIGHT / 2 + (Math.random() - 0.5) * 350,
-          length: Math.random() * 25 + 15,
+          x: (WIDTH / 2) + (Math.random() - 0.5) * (WIDTH * 0.9),
+          y: (HEIGHT / 2) + (Math.random() - 0.5) * (HEIGHT * 0.9),
+          length: Math.random() * 20 + 15,
           angle: Math.random() * Math.PI,
-          color: `hsl(${38 + Math.random() * 12}, 70%, ${30 + Math.random() * 30}%)`
+          color: `hsl(${35 + Math.random() * 15}, 70%, ${25 + Math.random() * 35}%)`
         });
       }
       updateCount();
+      draw();
     }
 
     function updateCount() {
       countDisplay.innerText = hays.length;
     }
 
-    // 화면 그리기
     function draw() {
-      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      // 배경 초기화
+      ctx.fillStyle = '#1c1712';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      // 1. 가장 밑바닥에 숨겨진 바늘 그리기 (건초가 다 치워져야 보임)
-      if (!needle.found) {
-        ctx.save();
-        ctx.translate(needle.x, needle.y);
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(-15, 0);
-        ctx.lineTo(15, 0);
-        ctx.stroke();
-        ctx.restore();
-      }
+      // 1. 바늘 그리기 (가장 바닥)
+      ctx.save();
+      ctx.translate(needle.x, needle.y);
+      ctx.rotate(Math.PI / 4); // 살짝 기울임
+      
+      // 바늘 그림자
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 8;
+      
+      ctx.strokeStyle = '#e0ffff'; // 은빛/하늘색
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-20, 0);
+      ctx.lineTo(20, 0);
+      ctx.stroke();
+      
+      // 바늘 귀
+      ctx.fillStyle = '#1c1712';
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(15, 0, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
-      // 2. 건초 더미 렌더링 (위에서부터 차곡차곡 쌓인 느낌)
+      // 2. 건초 그리기 (바늘 위를 덮음)
       hays.forEach(hay => {
         ctx.strokeStyle = hay.color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2; // 모바일에선 조금 더 두껍게
+        ctx.lineCap = 'round';
         ctx.beginPath();
         const cos = Math.cos(hay.angle) * (hay.length / 2);
         const sin = Math.sin(hay.angle) * (hay.length / 2);
@@ -106,55 +174,77 @@
         ctx.lineTo(hay.x + cos, hay.y + sin);
         ctx.stroke();
       });
+    }
 
-      // 만약 바늘을 찾았을 때
-      if (needle.found) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, WIDTH, HEIGHT);
-        ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 28px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText("🎉 바늘을 찾아냈습니다!", WIDTH / 2, HEIGHT / 2 - 10);
-        ctx.fillStyle = '#fff';
-        ctx.font = '16px sans-serif';
-        ctx.fillText("당신의 극악무도한 인내심에 경배를 표합니다.", WIDTH / 2, HEIGHT / 2 + 30);
+    // 터치 및 마우스로 건초 지우기 로직
+    function digHay(clientX, clientY) {
+      if (needle.found) return;
+
+      let removed = false;
+      
+      // 터치 반경(TOUCH_RADIUS) 내의 건초 필터링(제거)
+      const prevLength = hays.length;
+      hays = hays.filter(hay => {
+        const dist = Math.hypot(hay.x - clientX, hay.y - clientY);
+        return dist > TOUCH_RADIUS; 
+      });
+
+      if (hays.length < prevLength) {
+        removed = true;
+        updateCount();
+      }
+
+      // 건초가 지워졌을 때만 바늘 발견 체크 및 화면 다시 그리기 (배터리 절약)
+      if (removed) {
+        checkWinCondition(clientX, clientY);
+        draw();
       }
     }
 
-    // 마우스 클릭 시 해당 위치의 건초들을 뽑아냄 (제거)
-    canvas.addEventListener('click', (e) => {
-      if (needle.found) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const pickRadius = 35; // 한 번에 파내는 반경
-
-      // 클릭한 위치 주변의 건초들을 대거 제거 (건초 뽑기)
-      hays = hays.filter(hay => {
-        const dist = Math.hypot(hay.x - mouseX, hay.y - mouseY);
-        return dist > pickRadius; // 클릭 범위 안에 있는 건초 삭제
-      });
-
-      updateCount();
-
-      // 바늘 위치가 건초에 의해 안 가려져 있는지(주변 건초가 다 치워졌는지) 확인
-      const distToNeedle = Math.hypot(mouseX - needle.x, mouseY - needle.y);
-      if (distToNeedle < 30) {
-        // 바늘 주변 건초가 충분히 제거되었는지 검사
-        const remainingNearNeedle = hays.filter(h => Math.hypot(h.x - needle.x, h.y - needle.y) < 15).length;
-        if (remainingNearNeedle < 3) {
+    function checkWinCondition(x, y) {
+      // 터치한 곳이 바늘과 가까운지 확인
+      const distToNeedle = Math.hypot(x - needle.x, y - needle.y);
+      if (distToNeedle < 40) {
+        // 바늘 주변에 남은 건초가 3개 이하인지 확인 (다 걷어냈는지)
+        const coveringHays = hays.filter(h => Math.hypot(h.x - needle.x, h.y - needle.y) < 30).length;
+        if (coveringHays <= 3) {
           needle.found = true;
+          // 모바일 진동 효과 (지원하는 기기에서만 작동)
+          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+          winScreen.classList.add('show');
         }
       }
+    }
 
-      draw();
-    });
+    // --- 이벤트 리스너 (터치 & 마우스 동시 지원) ---
+    function handleInteraction(e) {
+      e.preventDefault(); // 스크롤 등 기본 동작 방지
+      // 터치 이벤트인지 마우스 이벤트인지 구분
+      if (e.touches) {
+        for (let i = 0; i < e.touches.length; i++) {
+          digHay(e.touches[i].clientX, e.touches[i].clientY);
+        }
+      } else {
+        // 마우스 클릭 상태일 때만
+        if (e.buttons > 0) {
+          digHay(e.clientX, e.clientY);
+        }
+      }
+    }
 
-    // 최초 실행
+    window.addEventListener('resize', resize);
+    
+    // 터치 이벤트 (스마트폰)
+    canvas.addEventListener('touchstart', handleInteraction, { passive: false });
+    canvas.addEventListener('touchmove', handleInteraction, { passive: false });
+    
+    // 마우스 이벤트 (PC 테스트용)
+    canvas.addEventListener('mousedown', handleInteraction);
+    canvas.addEventListener('mousemove', handleInteraction);
+
+    // 초기화 실행
+    resize();
     initGame();
-    draw();
   </script>
 </body>
 </html>
