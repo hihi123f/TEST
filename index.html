@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>건초 100만 개에서 바늘 찾기 (The Haystack 1M)</title>
+  <title>진짜 파헤치는 100만 건초 더미</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       overflow: hidden;
-      background: #0d0c0a;
+      background: #0a0806;
       color: #e0dcd3;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
       touch-action: none;
@@ -19,162 +18,76 @@
     }
     #gameCanvas {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       display: block;
-      background: #18120b;
+      background: #140e08;
     }
     #header-ui {
       position: absolute;
       top: max(12px, env(safe-area-inset-top));
-      left: 0;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      pointer-events: none;
-      z-index: 20;
+      left: 0; width: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      pointer-events: none; z-index: 20;
     }
     .status-panel {
-      background: rgba(20, 16, 12, 0.88);
+      background: rgba(18, 14, 10, 0.9);
       border: 1px solid #4a3f35;
-      backdrop-filter: blur(8px);
-      padding: 8px 18px;
-      border-radius: 20px;
+      padding: 8px 18px; border-radius: 20px;
       text-align: center;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.7);
     }
-    .count-text {
-      font-size: 15px;
-      font-weight: 800;
-      color: #f5c563;
-      letter-spacing: 0.5px;
-    }
-    .sub-text {
-      font-size: 11px;
-      color: #a89f91;
-      margin-top: 2px;
-    }
+    .count-text { font-size: 15px; font-weight: 800; color: #f5c563; }
+    .sub-text { font-size: 11px; color: #a89f91; margin-top: 2px; }
+
     #bottom-ui {
       position: absolute;
-      bottom: max(16px, env(safe-area-inset-bottom));
-      left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      padding: 0 12px;
-      z-index: 20;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      left: 0; width: 100%;
+      display: flex; justify-content: center;
+      gap: 6px; padding: 0 10px; z-index: 20;
     }
     .tool-btn {
-      flex: 1;
-      max-width: 95px;
-      height: 56px;
-      background: rgba(30, 24, 18, 0.9);
+      flex: 1; max-width: 90px; height: 54px;
+      background: rgba(28, 22, 16, 0.9);
       border: 1.5px solid #4e4033;
-      backdrop-filter: blur(10px);
-      color: #cfc6b8;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      cursor: pointer;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-      transition: all 0.2s;
+      color: #cfc6b8; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
     }
-    .tool-btn .icon-name {
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .tool-btn .lock-info {
-      font-size: 9px;
-      color: #888;
-    }
-    .tool-btn.locked {
-      opacity: 0.45;
-      background: rgba(18, 15, 12, 0.7);
-      border-color: #2e261f;
-      cursor: not-allowed;
-    }
+    .tool-btn .icon-name { font-size: 12px; font-weight: 700; }
+    .tool-btn .lock-info { font-size: 9px; color: #888; }
+    .tool-btn.locked { opacity: 0.35; cursor: not-allowed; border-color: #221a14; }
     .tool-btn.active {
       background: linear-gradient(135deg, #d4a343, #b88628);
-      color: #120e06;
-      border-color: #ffe082;
-      box-shadow: 0 0 16px rgba(212, 163, 67, 0.6);
+      color: #120e06; border-color: #ffe082;
+      box-shadow: 0 0 14px rgba(212, 163, 67, 0.6);
     }
-    .tool-btn.active .lock-info {
-      color: #2b1f07;
-      font-weight: 600;
-    }
+    .tool-btn.active .lock-info { color: #2b1f07; font-weight: 600; }
+
     #unlock-toast {
-      position: absolute;
-      top: 25%;
-      left: 50%;
+      position: absolute; top: 20%; left: 50%;
       transform: translate(-50%, -50%) scale(0.8);
       background: rgba(15, 14, 12, 0.95);
-      border: 2px solid #f5c563;
-      padding: 14px 24px;
-      border-radius: 16px;
-      color: #fff;
-      font-weight: bold;
-      font-size: 15px;
-      text-align: center;
-      z-index: 60;
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      box-shadow: 0 0 30px rgba(245, 197, 99, 0.4);
+      border: 2px solid #f5c563; padding: 12px 20px;
+      border-radius: 16px; color: #fff; font-weight: bold; font-size: 14px;
+      z-index: 60; opacity: 0; pointer-events: none;
+      transition: all 0.3s;
     }
-    #unlock-toast.show {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
+    #unlock-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
     #win-modal {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 9, 7, 0.88);
-      backdrop-filter: blur(12px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.4s ease;
-      padding: 24px;
-      text-align: center;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 9, 7, 0.9); backdrop-filter: blur(10px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.4s;
     }
-    #win-modal.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
+    #win-modal.show { opacity: 1; pointer-events: auto; }
     .win-card {
-      background: #1e1913;
-      border: 2px solid #00f0ff;
-      border-radius: 20px;
-      padding: 32px 24px;
+      background: #1e1913; border: 2px solid #00f0ff;
+      border-radius: 20px; padding: 30px 20px; text-align: center;
+      max-width: 300px; width: 90%;
       box-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
-      max-width: 320px;
-      width: 100%;
-    }
-    .win-card h2 { color: #00f0ff; font-size: 24px; margin-bottom: 8px; }
-    .win-card p { color: #cfc6b8; font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
-    .win-card button {
-      width: 100%;
-      height: 48px;
-      background: #00f0ff;
-      color: #0d1117;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -188,33 +101,34 @@
   </div>
 
   <canvas id="gameCanvas"></canvas>
-
-  <div id="unlock-toast">🎉 새로운 장비 해금!</div>
+  <div id="unlock-toast">🎉 장비 해금!</div>
 
   <div id="bottom-ui">
     <button class="tool-btn active" id="btn-tweezer" onclick="selectTool('tweezer')">
       <span class="icon-name">🤏 핀셋</span>
-      <span class="lock-info">기본 (1개)</span>
+      <span class="lock-info">기본</span>
     </button>
     <button class="tool-btn locked" id="btn-earpick" onclick="selectTool('earpick')">
       <span class="icon-name">✨ 귀이개</span>
-      <span class="lock-info">1만 개 필요</span>
+      <span class="lock-info">1만 개</span>
     </button>
     <button class="tool-btn locked" id="btn-spoon" onclick="selectTool('spoon')">
       <span class="icon-name">🥄 숟가락</span>
-      <span class="lock-info">10만 개 필요</span>
+      <span class="lock-info">10만 개</span>
     </button>
     <button class="tool-btn locked" id="btn-blower" onclick="selectTool('blower')">
       <span class="icon-name">💨 송풍기</span>
-      <span class="lock-info">50만 개 필요</span>
+      <span class="lock-info">50만 개</span>
     </button>
   </div>
 
   <div id="win-modal">
     <div class="win-card">
-      <h2>🎉 전설의 바늘 발견!</h2>
-      <p>1,000,000개의 건초를 뚫고 바늘을 찾아냈습니다! 당신의 인내심은 국보급입니다.</p>
-      <button onclick="initGame()">처음부터 다시 고문받기</button>
+      <h2 style="color:#00f0ff; margin-bottom:8px;">🎉 바늘 발견!</h2>
+      <p style="color:#ccc; font-size:13px; line-height:1.4; margin-bottom:20px;">
+        100만 개의 건초 깊은 층을 완전히 파헤쳐 바늘을 찾아냈습니다!
+      </p>
+      <button onclick="initGame()" style="width:100%; height:44px; background:#00f0ff; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">다시 하기</button>
     </div>
   </div>
 
@@ -227,23 +141,26 @@
     const winModal = document.getElementById('win-modal');
 
     let WIDTH, HEIGHT;
-    const TOTAL_START_HAYS = 1000000;
-    const RENDER_HAY_COUNT = 3200;
+    const TOTAL_START = 1000000;
+    const VISIBLE_HAYS = 4500; // 10개 층으로 나뉘어 빽빽하게 쌓일 건초 수
+    const MAX_LAYERS = 10;
 
-    let totalHay = TOTAL_START_HAYS;
+    let totalHay = TOTAL_START;
     let clearedHay = 0;
     let currentTool = 'tweezer';
     let pointers = new Map();
     let gameWon = false;
 
+    // 도구 스펙 (해금 요구치, 반경, 한 번에 파내는 깊이 레이어 수, 100만 차감 가중치)
     const TOOLS = {
-      tweezer: { name: '핀셋', req: 0, unlocked: true, radius: 14, maxRemove: 2, zLift: 4 },
-      earpick: { name: '귀이개', req: 10000, unlocked: false, radius: 36, maxRemove: 40, zLift: 7 },
-      spoon:   { name: '숟가락', req: 100000, unlocked: false, radius: 75, maxRemove: 350, zLift: 10 },
-      blower:  { name: '송풍기', req: 500000, unlocked: false, radius: 140, maxRemove: 2500, zLift: 18 }
+      tweezer: { name: '핀셋', req: 0, unlocked: true, radius: 16, digDepth: 1, maxRemove: 2 },
+      earpick: { name: '귀이개', req: 10000, unlocked: false, radius: 34, digDepth: 2, maxRemove: 50 },
+      spoon:   { name: '숟가락', req: 100000, unlocked: false, radius: 68, digDepth: 4, maxRemove: 400 },
+      blower:  { name: '송풍기', req: 500000, unlocked: false, radius: 130, digDepth: 10, maxRemove: 3000 }
     };
 
-    const LIGHT = { x: 0.7, y: 0.9 };
+    let hays = [];
+    const needle = { x: 0, y: 0, angle: 0, length: 42, found: false };
 
     function resize() {
       WIDTH = window.innerWidth;
@@ -252,163 +169,46 @@
       canvas.width = WIDTH * dpr;
       canvas.height = HEIGHT * dpr;
       ctx.scale(dpr, dpr);
+      draw();
     }
-
-    class Hay {
-      constructor(isTopLayer = false) {
-        this.reset(isTopLayer);
-      }
-
-      reset(isTopLayer) {
-        this.x = WIDTH / 2 + (Math.random() - 0.5) * (WIDTH * 0.95);
-        this.y = HEIGHT / 2 + (Math.random() - 0.5) * (HEIGHT * 0.85);
-        this.z = isTopLayer ? Math.random() * 45 + 35 : Math.random() * 50;
-        
-        this.length = Math.random() * 22 + 16;
-        this.thickness = Math.random() * 1.5 + 2.0;
-        this.angle = Math.random() * Math.PI * 2;
-        this.angVel = (Math.random() - 0.5) * 0.04;
-
-        this.vx = 0;
-        this.vy = 0;
-        this.vz = 0;
-
-        const hue = 38 + Math.random() * 12;
-        const sat = 65 + Math.random() * 25;
-        this.baseLight = 28 + Math.random() * 30;
-        this.color = `hsl(${hue}, ${sat}%, `;
-      }
-
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.z += this.vz;
-        this.angle += this.angVel;
-
-        this.vx *= 0.88;
-        this.vy *= 0.88;
-        this.angVel *= 0.85;
-
-        if (this.z > 0) {
-          this.vz -= 0.65;
-        } else {
-          this.z = 0;
-          this.vz = 0;
-        }
-
-        if (this.x < 15) { this.x = 15; this.vx *= -0.5; }
-        if (this.x > WIDTH - 15) { this.x = WIDTH - 15; this.vx *= -0.5; }
-        if (this.y < 15) { this.y = 15; this.vy *= -0.5; }
-        if (this.y > HEIGHT - 15) { this.y = HEIGHT - 15; this.vy *= -0.5; }
-      }
-
-      draw(ctx) {
-        const zScale = 1 + this.z * 0.006;
-        const renderLen = this.length * zScale;
-        const renderThick = this.thickness * zScale;
-
-        const cos = Math.cos(this.angle);
-        const sin = Math.sin(this.angle);
-
-        const x1 = this.x - (cos * renderLen) / 2;
-        const y1 = this.y - (sin * renderLen) / 2;
-        const x2 = this.x + (cos * renderLen) / 2;
-        const y2 = this.y + (sin * renderLen) / 2;
-
-        if (this.z > 2) {
-          const shadowDist = this.z * 0.45;
-          ctx.beginPath();
-          ctx.lineWidth = renderThick;
-          ctx.strokeStyle = `rgba(8, 6, 4, ${Math.max(0.12, 0.48 - this.z * 0.003)})`;
-          ctx.moveTo(x1 + LIGHT.x * shadowDist, y1 + LIGHT.y * shadowDist);
-          ctx.lineTo(x2 + LIGHT.x * shadowDist, y2 + LIGHT.y * shadowDist);
-          ctx.stroke();
-        }
-
-        const currentLight = Math.min(85, this.baseLight + this.z * 0.4);
-        ctx.beginPath();
-        ctx.lineWidth = renderThick;
-        ctx.strokeStyle = `${this.color}${currentLight}%)`;
-        ctx.lineCap = 'round';
-        ctx.moveTo(x1, y1 - this.z * 0.22);
-        ctx.lineTo(x2, y2 - this.z * 0.22);
-        ctx.stroke();
-      }
-    }
-
-    const needle = {
-      x: 0,
-      y: 0,
-      angle: 0,
-      length: 46,
-      thickness: 3.5,
-      glintPhase: 0,
-      reset() {
-        this.x = WIDTH * 0.25 + Math.random() * (WIDTH * 0.5);
-        this.y = HEIGHT * 0.3 + Math.random() * (HEIGHT * 0.4);
-        this.angle = Math.random() * Math.PI * 2;
-      },
-      draw(ctx) {
-        this.glintPhase += 0.06;
-        const cos = Math.cos(this.angle);
-        const sin = Math.sin(this.angle);
-
-        const x1 = this.x - (cos * this.length) / 2;
-        const y1 = this.y - (sin * this.length) / 2;
-        const x2 = this.x + (cos * this.length) / 2;
-        const y2 = this.y + (sin * this.length) / 2;
-
-        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
-        const glint = (Math.sin(this.glintPhase) + 1) / 2;
-        grad.addColorStop(0, '#88929b');
-        grad.addColorStop(Math.min(0.95, Math.max(0.05, glint)), '#ffffff');
-        grad.addColorStop(1, '#4f5d68');
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.lineWidth = this.thickness;
-        ctx.strokeStyle = grad;
-        ctx.lineCap = 'round';
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-
-        ctx.fillStyle = '#18120b';
-        ctx.beginPath();
-        ctx.arc(x1 + cos * 4.5, y1 + sin * 4.5, 1.4, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (glint > 0.75) {
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = '#00f0ff';
-          ctx.shadowBlur = 12;
-          ctx.fillRect(x1 + cos * (this.length * glint) - 1.5, y1 + sin * (this.length * glint) - 1.5, 4, 4);
-        }
-        ctx.restore();
-      }
-    };
-
-    let hays = [];
 
     function initGame() {
       gameWon = false;
       winModal.classList.remove('show');
-      totalHay = TOTAL_START_HAYS;
+      totalHay = TOTAL_START;
       clearedHay = 0;
       updateUI();
-      needle.reset();
-      
+
+      // 바늘은 맨 바닥(Layer 0) 깊숙한 곳에 배치
+      needle.x = WIDTH * 0.25 + Math.random() * (WIDTH * 0.5);
+      needle.y = HEIGHT * 0.3 + Math.random() * (HEIGHT * 0.4);
+      needle.angle = Math.random() * Math.PI * 2;
+
+      // 10개 층으로 건초 생성 (위층일수록 밝고 굵음)
+      hays = [];
+      for (let i = 0; i < VISIBLE_HAYS; i++) {
+        const layer = Math.floor(Math.random() * MAX_LAYERS); // 0(바닥) ~ 9(맨 위)
+        hays.push({
+          x: WIDTH / 2 + (Math.random() - 0.5) * (WIDTH * 0.92),
+          y: HEIGHT / 2 + (Math.random() - 0.5) * (HEIGHT * 0.85),
+          layer: layer,
+          length: 16 + layer * 1.2,
+          thickness: 1.4 + layer * 0.18,
+          angle: Math.random() * Math.PI * 2,
+          color: `hsl(${36 + Math.random() * 8}, 65%, ${18 + layer * 4.5}%)`
+        });
+      }
+
+      // 위층이 위로 오도록 정렬
+      hays.sort((a, b) => a.layer - b.layer);
+
       Object.keys(TOOLS).forEach(k => {
         TOOLS[k].unlocked = TOOLS[k].req === 0;
         const btn = document.getElementById(`btn-${k}`);
         if (btn) btn.classList.toggle('locked', !TOOLS[k].unlocked);
       });
       selectTool('tweezer');
-
-      hays = [];
-      for (let i = 0; i < RENDER_HAY_COUNT; i++) {
-        hays.push(new Hay(i > RENDER_HAY_COUNT * 0.4));
-      }
+      draw();
     }
 
     function selectTool(key) {
@@ -421,10 +221,10 @@
     }
 
     function showUnlockToast(name) {
-      unlockToast.innerText = `🔓 [${name}] 장비 해금!`;
+      unlockToast.innerText = `🔓 [${name}] 해금!`;
       unlockToast.classList.add('show');
       if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-      setTimeout(() => unlockToast.classList.remove('show'), 2000);
+      setTimeout(() => unlockToast.classList.remove('show'), 1800);
     }
 
     function checkUnlocks() {
@@ -442,80 +242,133 @@
       clearedCountEl.innerText = clearedHay.toLocaleString();
     }
 
-    function applyInteractions() {
+    // 터치 지점의 건초를 '위층부터 순서대로' 영구 제거
+    function digAt(x, y) {
+      if (gameWon) return;
+
       const tool = TOOLS[currentTool];
-      const radius = tool.radius;
+      const r = tool.radius;
 
-      pointers.forEach((p) => {
-        if (!p.active) return;
+      // 터치 반경 내 건초 중 가장 높은 층(위층) 찾기
+      let maxLayerInArea = -1;
+      for (let i = 0; i < hays.length; i++) {
+        if (Math.hypot(hays[i].x - x, hays[i].y - y) < r) {
+          if (hays[i].layer > maxLayerInArea) maxLayerInArea = hays[i].layer;
+        }
+      }
 
-        hays.forEach(hay => {
-          const dx = hay.x - p.x;
-          const dy = hay.y - p.y;
-          const dist = Math.hypot(dx, dy);
+      if (maxLayerInArea === -1) return;
 
-          if (dist < radius) {
-            const power = (1 - dist / radius);
+      // 현재 가장 높은 층부터 digDepth 층수만큼만 제거 (위층부터 파내기)
+      const minLayerToRemove = Math.max(0, maxLayerInArea - tool.digDepth + 1);
+      const prevCount = hays.length;
 
-            if (currentTool === 'blower') {
-              const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.4;
-              const force = power * 24;
-              hay.vx += Math.cos(angle) * force;
-              hay.vy += Math.sin(angle) * force;
-              hay.vz += power * tool.zLift;
-              hay.angVel += (Math.random() - 0.5) * 0.35;
-            } else {
-              hay.vx += p.vx * 0.7 + (dx / (dist || 1)) * 5 * power;
-              hay.vy += p.vy * 0.7 + (dy / (dist || 1)) * 5 * power;
-              hay.vz += power * tool.zLift;
-              hay.angVel += (p.vx + p.vy) * 0.012;
-            }
-          }
-        });
+      hays = hays.filter(hay => {
+        const inRadius = Math.hypot(hay.x - x, hay.y - y) < r;
+        if (inRadius && hay.layer >= minLayerToRemove) {
+          return false; // 제거
+        }
+        return true;
+      });
 
-        if (totalHay > 0) {
-          const addCleared = Math.min(totalHay, Math.floor(tool.maxRemove * (Math.random() * 0.5 + 0.5)));
-          if (addCleared > 0) {
-            totalHay -= addCleared;
-            clearedHay += addCleared;
-            updateUI();
-            checkUnlocks();
+      const removedVisual = prevCount - hays.length;
+
+      if (removedVisual > 0) {
+        // 100만 카운트 차감
+        const addCleared = Math.min(totalHay, Math.floor(tool.maxRemove * (Math.random() * 0.4 + 0.8)));
+        totalHay -= addCleared;
+        clearedHay += addCleared;
+        updateUI();
+        checkUnlocks();
+
+        // 바늘 발견 검사 (바늘 주변 25px 내에 남은 건초가 거의 없을 때)
+        const distToNeedle = Math.hypot(x - needle.x, y - needle.y);
+        if (distToNeedle < 35) {
+          const coveringCount = hays.filter(h => Math.hypot(h.x - needle.x, h.y - needle.y) < 22).length;
+          if (coveringCount <= 2) {
+            gameWon = true;
+            if (navigator.vibrate) navigator.vibrate([150, 80, 150, 80, 250]);
+            winModal.classList.add('show');
           }
         }
+        draw();
+      }
+    }
 
-        if (!gameWon) {
-          const distToNeedle = Math.hypot(p.x - needle.x, p.y - needle.y);
-          if (distToNeedle < 40) {
-            let coveringHays = 0;
-            for (let i = 0; i < hays.length; i++) {
-              const h = hays[i];
-              if (Math.hypot(h.x - needle.x, h.y - needle.y) < 28 && h.z < 22) {
-                coveringHays++;
-                if (coveringHays >= 5) break;
-              }
-            }
-            if (coveringHays < 5) {
-              gameWon = true;
-              if (navigator.vibrate) navigator.vibrate([150, 80, 150, 80, 300]);
-              winModal.classList.add('show');
-            }
-          }
+    function draw() {
+      // 1. 깊은 흙바닥 (구멍 파인 자리)
+      ctx.fillStyle = '#100b06';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // 2. 바닥에 놓인 은바늘
+      const cos = Math.cos(needle.angle);
+      const sin = Math.sin(needle.angle);
+      const x1 = needle.x - (cos * needle.length) / 2;
+      const y1 = needle.y - (sin * needle.length) / 2;
+      const x2 = needle.x + (cos * needle.length) / 2;
+      const y2 = needle.y + (sin * needle.length) / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineWidth = 3.2;
+      ctx.strokeStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 10;
+      ctx.lineCap = 'round';
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 3. 건초 그리기 (그림자와 함께 층층이)
+      hays.forEach(hay => {
+        const c = Math.cos(hay.angle) * (hay.length / 2);
+        const s = Math.sin(hay.angle) * (hay.length / 2);
+
+        // 3D 그림자 (높은 층일수록 그림자가 짙고 멂)
+        if (hay.layer > 1) {
+          ctx.beginPath();
+          ctx.lineWidth = hay.thickness;
+          ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+          ctx.moveTo(hay.x - c + hay.layer * 0.7, hay.y - s + hay.layer * 0.9);
+          ctx.lineTo(hay.x + c + hay.layer * 0.7, hay.y + s + hay.layer * 0.9);
+          ctx.stroke();
+        }
+
+        // 건초 본체
+        ctx.beginPath();
+        ctx.lineWidth = hay.thickness;
+        ctx.strokeStyle = hay.color;
+        ctx.lineCap = 'round';
+        ctx.moveTo(hay.x - c, hay.y - s);
+        ctx.lineTo(hay.x + c, hay.y + s);
+        ctx.stroke();
+      });
+
+      // 4. 터치 중인 툴 반경 가이드 링
+      pointers.forEach(p => {
+        if (p.active) {
+          ctx.save();
+          const tool = TOOLS[currentTool];
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, tool.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = currentTool === 'blower' ? 'rgba(0, 240, 255, 0.6)' : 'rgba(245, 197, 99, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.restore();
         }
       });
     }
 
+    // 터치 & 마우스 상호작용
     function handlePointer(id, x, y, active) {
-      if (!pointers.has(id)) {
-        pointers.set(id, { x, y, prevX: x, prevY: y, vx: 0, vy: 0, active });
+      if (active) {
+        pointers.set(id, { x, y, active });
+        digAt(x, y);
       } else {
-        const p = pointers.get(id);
-        p.vx = x - p.prevX;
-        p.vy = y - p.prevY;
-        p.prevX = x;
-        p.prevY = y;
-        p.x = x;
-        p.y = y;
-        p.active = active;
+        pointers.delete(id);
+        draw();
       }
     }
 
@@ -537,7 +390,7 @@
 
     window.addEventListener('touchend', (e) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
-        pointers.delete(e.changedTouches[i].identifier);
+        handlePointer(e.changedTouches[i].identifier, 0, 0, false);
       }
     });
 
@@ -554,49 +407,12 @@
 
     window.addEventListener('mouseup', () => {
       isMouseDown = false;
-      pointers.delete('mouse');
+      handlePointer('mouse', 0, 0, false);
     });
-
-    function loop() {
-      ctx.fillStyle = '#16110b';
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-      ctx.fillStyle = '#100b06';
-      ctx.beginPath();
-      ctx.arc(WIDTH / 2, HEIGHT / 2, Math.min(WIDTH, HEIGHT) * 0.7, 0, Math.PI * 2);
-      ctx.fill();
-
-      needle.draw(ctx);
-      applyInteractions();
-
-      hays.sort((a, b) => a.z - b.z);
-
-      for (let i = 0; i < hays.length; i++) {
-        hays[i].update();
-        hays[i].draw(ctx);
-      }
-
-      pointers.forEach(p => {
-        if (p.active) {
-          ctx.save();
-          const tool = TOOLS[currentTool];
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, tool.radius, 0, Math.PI * 2);
-          ctx.strokeStyle = currentTool === 'blower' ? 'rgba(0, 240, 255, 0.5)' : 'rgba(245, 197, 99, 0.5)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
-          ctx.stroke();
-          ctx.restore();
-        }
-      });
-
-      requestAnimationFrame(loop);
-    }
 
     window.addEventListener('resize', resize);
     resize();
     initGame();
-    loop();
   </script>
 </body>
 </html>
