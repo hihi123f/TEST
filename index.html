@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>3D 건초 더미에서 바늘 찾기 (Mobile)</title>
+  <title>건초 100만 개에서 바늘 찾기 (The Haystack 1M)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -26,90 +26,124 @@
       display: block;
       background: #18120b;
     }
-    /* 상단 상태 바 */
     #header-ui {
       position: absolute;
-      top: max(16px, env(safe-area-inset-top));
+      top: max(12px, env(safe-area-inset-top));
       left: 0;
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
       pointer-events: none;
       z-index: 20;
     }
-    .title-badge {
-      background: rgba(20, 16, 12, 0.85);
+    .status-panel {
+      background: rgba(20, 16, 12, 0.88);
       border: 1px solid #4a3f35;
       backdrop-filter: blur(8px);
-      padding: 6px 16px;
+      padding: 8px 18px;
       border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #f5c563;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
     }
-    /* 하단 모바일 컨트롤 도구 바 */
+    .count-text {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f5c563;
+      letter-spacing: 0.5px;
+    }
+    .sub-text {
+      font-size: 11px;
+      color: #a89f91;
+      margin-top: 2px;
+    }
     #bottom-ui {
       position: absolute;
-      bottom: max(20px, env(safe-area-inset-bottom));
+      bottom: max(16px, env(safe-area-inset-bottom));
       left: 0;
       width: 100%;
       display: flex;
       justify-content: center;
-      gap: 12px;
-      padding: 0 16px;
+      gap: 8px;
+      padding: 0 12px;
       z-index: 20;
     }
     .tool-btn {
       flex: 1;
-      max-width: 150px;
-      height: 52px;
-      background: rgba(35, 29, 23, 0.9);
+      max-width: 95px;
+      height: 56px;
+      background: rgba(30, 24, 18, 0.9);
       border: 1.5px solid #4e4033;
       backdrop-filter: blur(10px);
       color: #cfc6b8;
-      font-size: 15px;
-      font-weight: 700;
-      border-radius: 14px;
+      border-radius: 12px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 2px;
       cursor: pointer;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transition: all 0.2s;
     }
-    .tool-btn:active {
-      transform: scale(0.94);
+    .tool-btn .icon-name {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .tool-btn .lock-info {
+      font-size: 9px;
+      color: #888;
+    }
+    .tool-btn.locked {
+      opacity: 0.45;
+      background: rgba(18, 15, 12, 0.7);
+      border-color: #2e261f;
+      cursor: not-allowed;
     }
     .tool-btn.active {
       background: linear-gradient(135deg, #d4a343, #b88628);
       color: #120e06;
       border-color: #ffe082;
-      box-shadow: 0 0 20px rgba(212, 163, 67, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      box-shadow: 0 0 16px rgba(212, 163, 67, 0.6);
     }
-    .reset-btn {
-      width: 52px;
-      max-width: 52px;
-      flex: 0 0 52px;
-      font-size: 20px;
+    .tool-btn.active .lock-info {
+      color: #2b1f07;
+      font-weight: 600;
     }
-    /* 승리 모달 */
+    #unlock-toast {
+      position: absolute;
+      top: 25%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(15, 14, 12, 0.95);
+      border: 2px solid #f5c563;
+      padding: 14px 24px;
+      border-radius: 16px;
+      color: #fff;
+      font-weight: bold;
+      font-size: 15px;
+      text-align: center;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 0 30px rgba(245, 197, 99, 0.4);
+    }
+    #unlock-toast.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
     #win-modal {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(10, 9, 7, 0.85);
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 9, 7, 0.88);
       backdrop-filter: blur(12px);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      z-index: 50;
+      z-index: 100;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.4s ease;
@@ -128,23 +162,9 @@
       box-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
       max-width: 320px;
       width: 100%;
-      transform: translateY(20px) scale(0.92);
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    #win-modal.show .win-card {
-      transform: translateY(0) scale(1);
-    }
-    .win-card h2 {
-      color: #00f0ff;
-      font-size: 26px;
-      margin-bottom: 8px;
-    }
-    .win-card p {
-      color: #cfc6b8;
-      font-size: 14px;
-      line-height: 1.5;
-      margin-bottom: 24px;
-    }
+    .win-card h2 { color: #00f0ff; font-size: 24px; margin-bottom: 8px; }
+    .win-card p { color: #cfc6b8; font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
     .win-card button {
       width: 100%;
       height: 48px;
@@ -155,45 +175,74 @@
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
     }
   </style>
 </head>
 <body>
 
   <div id="header-ui">
-    <div class="title-badge">🌾 건초를 파헤쳐 숨겨진 은바늘을 찾으세요!</div>
+    <div class="status-panel">
+      <div class="count-text">남은 건초: <span id="hay-count">1,000,000</span>개</div>
+      <div class="sub-text">치운 건초: <span id="cleared-count">0</span>개</div>
+    </div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
+  <div id="unlock-toast">🎉 새로운 장비 해금!</div>
+
   <div id="bottom-ui">
-    <button class="tool-btn active" id="btn-shovel" onclick="setTool('shovel')">🥄 삽 (파헤치기)</button>
-    <button class="tool-btn" id="btn-blower" onclick="setTool('blower')">💨 송풍기 (날리기)</button>
-    <button class="tool-btn reset-btn" onclick="initGame()">🔄</button>
+    <button class="tool-btn active" id="btn-tweezer" onclick="selectTool('tweezer')">
+      <span class="icon-name">🤏 핀셋</span>
+      <span class="lock-info">기본 (1개)</span>
+    </button>
+    <button class="tool-btn locked" id="btn-earpick" onclick="selectTool('earpick')">
+      <span class="icon-name">✨ 귀이개</span>
+      <span class="lock-info">1만 개 필요</span>
+    </button>
+    <button class="tool-btn locked" id="btn-spoon" onclick="selectTool('spoon')">
+      <span class="icon-name">🥄 숟가락</span>
+      <span class="lock-info">10만 개 필요</span>
+    </button>
+    <button class="tool-btn locked" id="btn-blower" onclick="selectTool('blower')">
+      <span class="icon-name">💨 송풍기</span>
+      <span class="lock-info">50만 개 필요</span>
+    </button>
   </div>
 
   <div id="win-modal">
     <div class="win-card">
-      <h2>🎉 바늘 발견!</h2>
-      <p>수천 겹의 건초 더미를 뚫고 마침내 은바늘을 찾아냈습니다!</p>
-      <button onclick="initGame()">한 번 더 도전</button>
+      <h2>🎉 전설의 바늘 발견!</h2>
+      <p>1,000,000개의 건초를 뚫고 바늘을 찾아냈습니다! 당신의 인내심은 국보급입니다.</p>
+      <button onclick="initGame()">처음부터 다시 고문받기</button>
     </div>
   </div>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const hayCountEl = document.getElementById('hay-count');
+    const clearedCountEl = document.getElementById('cleared-count');
+    const unlockToast = document.getElementById('unlock-toast');
     const winModal = document.getElementById('win-modal');
 
     let WIDTH, HEIGHT;
-    const HAY_COUNT = 3200; // 모바일 최적화 수량
+    const TOTAL_START_HAYS = 1000000;
+    const RENDER_HAY_COUNT = 3200;
 
-    let currentTool = 'shovel';
-    let pointers = new Map(); // 멀티터치 관리
+    let totalHay = TOTAL_START_HAYS;
+    let clearedHay = 0;
+    let currentTool = 'tweezer';
+    let pointers = new Map();
     let gameWon = false;
 
-    // 조명 벡터 (3D 그림자용)
+    const TOOLS = {
+      tweezer: { name: '핀셋', req: 0, unlocked: true, radius: 14, maxRemove: 2, zLift: 4 },
+      earpick: { name: '귀이개', req: 10000, unlocked: false, radius: 36, maxRemove: 40, zLift: 7 },
+      spoon:   { name: '숟가락', req: 100000, unlocked: false, radius: 75, maxRemove: 350, zLift: 10 },
+      blower:  { name: '송풍기', req: 500000, unlocked: false, radius: 140, maxRemove: 2500, zLift: 18 }
+    };
+
     const LIGHT = { x: 0.7, y: 0.9 };
 
     function resize() {
@@ -205,7 +254,6 @@
       ctx.scale(dpr, dpr);
     }
 
-    // 2.5D 건초 클래스
     class Hay {
       constructor(isTopLayer = false) {
         this.reset(isTopLayer);
@@ -216,7 +264,7 @@
         this.y = HEIGHT / 2 + (Math.random() - 0.5) * (HEIGHT * 0.85);
         this.z = isTopLayer ? Math.random() * 45 + 35 : Math.random() * 50;
         
-        this.length = Math.random() * 24 + 16;
+        this.length = Math.random() * 22 + 16;
         this.thickness = Math.random() * 1.5 + 2.0;
         this.angle = Math.random() * Math.PI * 2;
         this.angVel = (Math.random() - 0.5) * 0.04;
@@ -288,7 +336,6 @@
       }
     }
 
-    // 바늘 객체
     const needle = {
       x: 0,
       y: 0,
@@ -297,8 +344,8 @@
       thickness: 3.5,
       glintPhase: 0,
       reset() {
-        this.x = WIDTH * 0.2 + Math.random() * (WIDTH * 0.6);
-        this.y = HEIGHT * 0.25 + Math.random() * (HEIGHT * 0.5);
+        this.x = WIDTH * 0.25 + Math.random() * (WIDTH * 0.5);
+        this.y = HEIGHT * 0.3 + Math.random() * (HEIGHT * 0.4);
         this.angle = Math.random() * Math.PI * 2;
       },
       draw(ctx) {
@@ -346,22 +393,58 @@
     function initGame() {
       gameWon = false;
       winModal.classList.remove('show');
+      totalHay = TOTAL_START_HAYS;
+      clearedHay = 0;
+      updateUI();
       needle.reset();
+      
+      Object.keys(TOOLS).forEach(k => {
+        TOOLS[k].unlocked = TOOLS[k].req === 0;
+        const btn = document.getElementById(`btn-${k}`);
+        if (btn) btn.classList.toggle('locked', !TOOLS[k].unlocked);
+      });
+      selectTool('tweezer');
+
       hays = [];
-      for (let i = 0; i < HAY_COUNT; i++) {
-        hays.push(new Hay(i > HAY_COUNT * 0.4));
+      for (let i = 0; i < RENDER_HAY_COUNT; i++) {
+        hays.push(new Hay(i > RENDER_HAY_COUNT * 0.4));
       }
     }
 
-    function setTool(tool) {
-      currentTool = tool;
-      document.getElementById('btn-shovel').classList.toggle('active', tool === 'shovel');
-      document.getElementById('btn-blower').classList.toggle('active', tool === 'blower');
+    function selectTool(key) {
+      if (!TOOLS[key].unlocked) return;
+      currentTool = key;
+      Object.keys(TOOLS).forEach(k => {
+        const btn = document.getElementById(`btn-${k}`);
+        if (btn) btn.classList.toggle('active', k === key);
+      });
+    }
+
+    function showUnlockToast(name) {
+      unlockToast.innerText = `🔓 [${name}] 장비 해금!`;
+      unlockToast.classList.add('show');
+      if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+      setTimeout(() => unlockToast.classList.remove('show'), 2000);
+    }
+
+    function checkUnlocks() {
+      Object.keys(TOOLS).forEach(k => {
+        if (!TOOLS[k].unlocked && clearedHay >= TOOLS[k].req) {
+          TOOLS[k].unlocked = true;
+          document.getElementById(`btn-${k}`).classList.remove('locked');
+          showUnlockToast(TOOLS[k].name);
+        }
+      });
+    }
+
+    function updateUI() {
+      hayCountEl.innerText = totalHay.toLocaleString();
+      clearedCountEl.innerText = clearedHay.toLocaleString();
     }
 
     function applyInteractions() {
-      const isBlower = currentTool === 'blower';
-      const radius = isBlower ? 140 : 75;
+      const tool = TOOLS[currentTool];
+      const radius = tool.radius;
 
       pointers.forEach((p) => {
         if (!p.active) return;
@@ -374,36 +457,46 @@
           if (dist < radius) {
             const power = (1 - dist / radius);
 
-            if (isBlower) {
+            if (currentTool === 'blower') {
               const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.4;
               const force = power * 24;
               hay.vx += Math.cos(angle) * force;
               hay.vy += Math.sin(angle) * force;
-              hay.vz += power * 16;
+              hay.vz += power * tool.zLift;
               hay.angVel += (Math.random() - 0.5) * 0.35;
             } else {
               hay.vx += p.vx * 0.7 + (dx / (dist || 1)) * 5 * power;
               hay.vy += p.vy * 0.7 + (dy / (dist || 1)) * 5 * power;
-              hay.vz += power * 9;
+              hay.vz += power * tool.zLift;
               hay.angVel += (p.vx + p.vy) * 0.012;
             }
           }
         });
 
+        if (totalHay > 0) {
+          const addCleared = Math.min(totalHay, Math.floor(tool.maxRemove * (Math.random() * 0.5 + 0.5)));
+          if (addCleared > 0) {
+            totalHay -= addCleared;
+            clearedHay += addCleared;
+            updateUI();
+            checkUnlocks();
+          }
+        }
+
         if (!gameWon) {
           const distToNeedle = Math.hypot(p.x - needle.x, p.y - needle.y);
-          if (distToNeedle < 45) {
+          if (distToNeedle < 40) {
             let coveringHays = 0;
             for (let i = 0; i < hays.length; i++) {
               const h = hays[i];
-              if (Math.hypot(h.x - needle.x, h.y - needle.y) < 30 && h.z < 25) {
+              if (Math.hypot(h.x - needle.x, h.y - needle.y) < 28 && h.z < 22) {
                 coveringHays++;
-                if (coveringHays >= 6) break;
+                if (coveringHays >= 5) break;
               }
             }
-            if (coveringHays < 6) {
+            if (coveringHays < 5) {
               gameWon = true;
-              if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+              if (navigator.vibrate) navigator.vibrate([150, 80, 150, 80, 300]);
               winModal.classList.add('show');
             }
           }
@@ -450,7 +543,7 @@
 
     let isMouseDown = false;
     window.addEventListener('mousedown', (e) => {
-      if (e.target.tagName === 'BUTTON') return;
+      if (e.target.closest('button')) return;
       isMouseDown = true;
       handlePointer('mouse', e.clientX, e.clientY, true);
     });
@@ -486,13 +579,12 @@
       pointers.forEach(p => {
         if (p.active) {
           ctx.save();
-          const isBlower = currentTool === 'blower';
-          const r = isBlower ? 140 : 75;
+          const tool = TOOLS[currentTool];
           ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-          ctx.strokeStyle = isBlower ? 'rgba(0, 240, 255, 0.45)' : 'rgba(245, 197, 99, 0.45)';
+          ctx.arc(p.x, p.y, tool.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = currentTool === 'blower' ? 'rgba(0, 240, 255, 0.5)' : 'rgba(245, 197, 99, 0.5)';
           ctx.lineWidth = 2;
-          ctx.setLineDash([6, 6]);
+          ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.restore();
         }
