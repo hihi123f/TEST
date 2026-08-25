@@ -2,157 +2,159 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>건초 물리 시뮬레이션 게임</title>
-  <!-- 2D 물리 엔진 라이브러리 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <title>500만 개... 까진 아니지만 건초 뽑기 게임</title>
   <style>
     body {
       margin: 0;
-      background: #111;
-      color: #eee;
+      background: #11100f;
+      color: #dcd7cd;
       font-family: sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       user-select: none;
     }
     #ui {
-      margin-bottom: 10px;
-      display: flex;
-      gap: 15px;
-      align-items: center;
+      margin-bottom: 15px;
+      text-align: center;
     }
-    button {
-      padding: 8px 16px;
-      background: #e67e22;
-      border: none;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    button:hover { background: #d35400; }
+    h2 { margin: 0 0 5px 0; color: #f1c40f; font-size: 20px; }
+    p { margin: 0; font-size: 14px; color: #888; }
     canvas {
-      border: 2px solid #444;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 3px solid #332b22;
+      background: #1c1712;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
+
   <div id="ui">
-    <button onclick="blowWind()">💨 송풍기 가동 (클릭/스페이스)</button>
-    <span id="msg">마우스로 건초를 직접 휘저어 바늘(은색)을 찾으세요!</span>
+    <h2>🌾 건초 더미에서 바늘 찾기 (The Haystack)</h2>
+    <p id="status-msg">마우스 클릭으로 건초 조각을 하나씩 뽑아내세요! (남은 건초: <span id="count">0</span>개)</p>
   </div>
-  <div id="game-container"></div>
+
+  <canvas id="gameCanvas" width="700" height="500"></canvas>
 
   <script>
-    const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body, Vector } = Matter;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const countDisplay = document.getElementById('count');
+    const statusMsg = document.getElementById('status-msg');
 
-    const width = 800;
-    const height = 550;
-    const hayCount = 1200; // 웹 브라우저에서 버벅이지 않는 최적 수량
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
 
-    const engine = Engine.create({
-      gravity: { x: 0, y: 0.8 }
-    });
-    const world = engine.world;
+    // 건초 더미 데이터 (빽빽하게 깔린 선 배열)
+    let hays = [];
+    let needle = { x: 0, y: 0, found: false };
 
-    const render = Render.create({
-      element: document.getElementById('game-container'),
-      engine: engine,
-      options: {
-        width: width,
-        height: height,
-        wireframes: false,
-        background: '#1a1815'
-      }
-    });
+    function initGame() {
+      hays = [];
+      needle.found = false;
+      
+      // 바늘 위치 랜덤 선정 (화면 중앙 부근)
+      needle.x = WIDTH / 2 + (Math.random() - 0.5) * 200;
+      needle.y = HEIGHT / 2 + (Math.random() - 0.5) * 200;
 
-    Render.run(render);
-    const runner = Runner.create();
-    Runner.run(runner, engine);
-
-    // 1. 벽 생성 (건초가 화면 밖으로 안 나가게)
-    const wallOpts = { isStatic: true, render: { fillStyle: '#333' } };
-    Composite.add(world, [
-      Bodies.rectangle(width / 2, height + 30, width, 60, wallOpts), // 바닥
-      Bodies.rectangle(-30, height / 2, 60, height, wallOpts),       // 좌
-      Bodies.rectangle(width + 30, height / 2, 60, height, wallOpts) // 우
-    ]);
-
-    // 2. 바늘 생성 (단 1개, 얇고 은색)
-    const needle = Bodies.rectangle(
-      width / 2 + (Math.random() * 200 - 100),
-      height - 20,
-      35, 3,
-      {
-        density: 0.05, // 쇠바늘이라 건초보다 무거움
-        friction: 0.9,
-        render: { fillStyle: '#00ffff' },
-        label: 'needle'
-      }
-    );
-    Composite.add(world, needle);
-
-    // 3. 건초 조각 1,200개 쏟아붓기
-    const haystacks = [];
-    const colors = ['#c29b38', '#d4ac0d', '#b7950b', '#7d6608', '#9a7d0a'];
-
-    for (let i = 0; i < hayCount; i++) {
-      const x = Math.random() * (width - 100) + 50;
-      const y = Math.random() * (height - 100);
-      const w = Math.random() * 25 + 15;
-      const h = 4;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-
-      const hay = Bodies.rectangle(x, y, w, h, {
-        angle: Math.random() * Math.PI,
-        friction: 0.4,
-        restitution: 0.1,
-        density: 0.001, // 가벼움
-        render: { fillStyle: color },
-        label: 'hay'
-      });
-      haystacks.push(hay);
-    }
-    Composite.add(world, haystacks);
-
-    // 4. 마우스 인터랙션 (손으로 건초 휘젓기)
-    const mouse = Mouse.create(render.canvas);
-    const mouseConstraint = MouseConstraint.create(engine, {
-      mouse: mouse,
-      constraint: {
-        stiffness: 0.2,
-        render: { visible: false }
-      }
-    });
-    Composite.add(world, mouseConstraint);
-    render.mouse = mouse;
-
-    // 5. 송풍기 기능 (주변 건초를 사방으로 날려버림)
-    function blowWind() {
-      haystacks.forEach(hay => {
-        const forceMagnitude = 0.005 * hay.mass;
-        Body.applyForce(hay, hay.position, {
-          x: (Math.random() - 0.5) * forceMagnitude * 2,
-          y: -forceMagnitude * 1.5
+      // 빽빽한 건초 생성 (약 2,500개 - 웹에서 부드럽게 돌아가는 최대치)
+      for (let i = 0; i < 2500; i++) {
+        hays.push({
+          x: WIDTH / 2 + (Math.random() - 0.5) * 350,
+          y: HEIGHT / 2 + (Math.random() - 0.5) * 350,
+          length: Math.random() * 25 + 15,
+          angle: Math.random() * Math.PI,
+          color: `hsl(${38 + Math.random() * 12}, 70%, ${30 + Math.random() * 30}%)`
         });
-      });
+      }
+      updateCount();
     }
 
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') blowWind();
+    function updateCount() {
+      countDisplay.innerText = hays.length;
+    }
+
+    // 화면 그리기
+    function draw() {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      // 1. 가장 밑바닥에 숨겨진 바늘 그리기 (건초가 다 치워져야 보임)
+      if (!needle.found) {
+        ctx.save();
+        ctx.translate(needle.x, needle.y);
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-15, 0);
+        ctx.lineTo(15, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 2. 건초 더미 렌더링 (위에서부터 차곡차곡 쌓인 느낌)
+      hays.forEach(hay => {
+        ctx.strokeStyle = hay.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        const cos = Math.cos(hay.angle) * (hay.length / 2);
+        const sin = Math.sin(hay.angle) * (hay.length / 2);
+        ctx.moveTo(hay.x - cos, hay.y - sin);
+        ctx.lineTo(hay.x + cos, hay.y + sin);
+        ctx.stroke();
+      });
+
+      // 만약 바늘을 찾았을 때
+      if (needle.found) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("🎉 바늘을 찾아냈습니다!", WIDTH / 2, HEIGHT / 2 - 10);
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px sans-serif';
+        ctx.fillText("당신의 극악무도한 인내심에 경배를 표합니다.", WIDTH / 2, HEIGHT / 2 + 30);
+      }
+    }
+
+    // 마우스 클릭 시 해당 위치의 건초들을 뽑아냄 (제거)
+    canvas.addEventListener('click', (e) => {
+      if (needle.found) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const pickRadius = 35; // 한 번에 파내는 반경
+
+      // 클릭한 위치 주변의 건초들을 대거 제거 (건초 뽑기)
+      hays = hays.filter(hay => {
+        const dist = Math.hypot(hay.x - mouseX, hay.y - mouseY);
+        return dist > pickRadius; // 클릭 범위 안에 있는 건초 삭제
+      });
+
+      updateCount();
+
+      // 바늘 위치가 건초에 의해 안 가려져 있는지(주변 건초가 다 치워졌는지) 확인
+      const distToNeedle = Math.hypot(mouseX - needle.x, mouseY - needle.y);
+      if (distToNeedle < 30) {
+        // 바늘 주변 건초가 충분히 제거되었는지 검사
+        const remainingNearNeedle = hays.filter(h => Math.hypot(h.x - needle.x, h.y - needle.y) < 15).length;
+        if (remainingNearNeedle < 3) {
+          needle.found = true;
+        }
+      }
+
+      draw();
     });
 
-    // 바늘 클릭 판정
-    Matter.Events.on(mouseConstraint, 'mousedown', (e) => {
-      const clickedBody = mouseConstraint.body;
-      if (clickedBody && clickedBody.label === 'needle') {
-        document.getElementById('msg').innerHTML = "🎉 <b style='color:#00ffff;'>바늘을 찾아냈습니다! 대단하네요!</b>";
-      }
-    });
+    // 최초 실행
+    initGame();
+    draw();
   </script>
 </body>
 </html>
