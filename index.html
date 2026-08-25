@@ -205,9 +205,7 @@
           <h1 id="go-title">#STACK_OVERFLOW!</h1>
           <div id="final-score" style="color:#fff; margin-bottom: 15px; font-size: 18px; text-align:center;"></div>
           
-          <!-- 🎯 데미지 미터기 (DPS Graph) 영역 -->
-          <div id="damage-meter-container" style="width: 350px; max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #555;">
-          </div>
+          <div id="damage-meter-container" style="width: 350px; max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #555;"></div>
           
           <button class="btn-action" onclick="restartGame()">↺ 다시 시작</button>
         </div>
@@ -224,13 +222,20 @@
   </div>
 
   <script>
-    let highQuality = localStorage.getItem("md_quality") === "false" ? false : true;
-    let bestTier = parseInt(localStorage.getItem("md_best_tier")) || 1;
-    let discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
+    let highQuality = true;
+    let bestTier = 1;
+    let discoveredRecipes = [];
+    
+    // 🎯 로컬스토리지 예외처리 (접근 차단 환경에서도 게임이 정상 실행되도록)
+    try {
+        highQuality = localStorage.getItem("md_quality") === "false" ? false : true;
+        bestTier = parseInt(localStorage.getItem("md_best_tier")) || 1;
+        discoveredRecipes = JSON.parse(localStorage.getItem("multiverse_recipes") || "[]");
+    } catch (e) { console.warn("로컬스토리지가 차단된 환경입니다. 기록이 저장되지 않습니다."); }
 
     function toggleQuality() {
       highQuality = !highQuality;
-      localStorage.setItem("md_quality", highQuality); 
+      try { localStorage.setItem("md_quality", highQuality); } catch(e){}
       const btn = document.getElementById("quality-btn");
       btn.innerText = highQuality ? "⚙️ 품질: 높음" : "⚙️ 품질: 낮음";
       btn.style.background = highQuality ? "#16a085" : "#7f8c8d";
@@ -272,14 +277,12 @@
       });
     }
 
-    // --- 시스템 및 증강 전역 변수 ---
     let MAX_ENEMIES = 300;
     let globalDmgMult = 1.0; let globalCostMult = 1.0; let globalRateMult = 1.0; let globalRangeMult = 1.0; let refundRate = 0.7;
     let executeThreshold = 0; let deathExplosion = false; let baseCostMult = 1.0; let poisonSpread = false;
     let bossHitGold = 0; let chainMultiplier = 1; let chainRangeMult = 1.0; let synergyDmgMult = 1.0;
     let doubleCast = false; let stunnedDmgMult = 1.0; let cosmicRuin = false; let giantSlayer = 0;
     
-    // 🎯 [신규] 대폭 추가된 증강 기믹 변수들
     let critChance = 0; let critMultiplier = 2.0;
     let budgetDmgMult = false; let shieldDmgMult = 1.0;
     let healthyEnemyBuff = 1.0; let goldMultiplier = 1.0;
@@ -295,11 +298,11 @@
     let stat_critDmg = 0; let stat_gamble = 0; let stat_bossGold = 0; let stat_doubleCast = 0;
     let stat_freezeDmg = 0; let stat_cosmicDmg = 0; let stat_giantDmg = 0; let stat_mansour = 0;
 
-    let gameState = 0; let budget = 100; let selectedTower = "SUM"; // 시작골드 100으로 대폭 삭감
+    // 🎯 시작 골드 100원으로 대폭 하락 적용
+    let gameState = 0; let budget = 100; let selectedTower = "SUM"; 
     let gameTime = 0; let frame = 0; let screenShake = 0; let currentTier = 1; let currentDimName = "EXCEL"; let bsodFlash = 0;
     let towers = []; let enemies = []; let projectiles = []; let particles = []; let floatingTexts = []; let shockwaves = []; let lightnings = [];
 
-    // 증강 통계 렌더링 함수
     function renderAugmentList() {
       const container = document.getElementById("augment-list-content");
       if (activeAugments.length === 0) {
@@ -360,8 +363,8 @@
     function getDimObj(tier) { if (tier < 30) return DIMENSIONS.EXCEL; if (tier < 60) return DIMENSIONS.HWP; if (tier < 90) return DIMENSIONS.PPT; return DIMENSIONS.DEV; }
     function getDimName(tier) { if (tier < 30) return "EXCEL"; if (tier < 60) return "HWP"; if (tier < 90) return "PPT"; return "DEV"; }
 
+    // 🎯 타워 스탯 & 사거리 너프 적용
     const TOWER_SPECS = {
-      // 🟩 1. 일반 타워 (8종)
       SUM: { type:"base", cost: 40, range: 100, rate: 24, dmg: 20, color: "#107c41", name: "SUM", desc:"가장 기본적인 단일 공격", unlockTier: 1 },
       IFERROR: { type:"base", cost: 60, range: 90, rate: 5, dmg: 5, color: "#d83b01", name: "IFERR", isBeam: true, desc:"적의 이동속도를 늦춤", unlockTier: 1 },
       MIN: { type:"base", cost: 70, range: 90, rate: 65, dmg: 35, color: "#3498db", name: "MIN", stun: 12, desc:"적을 짧게 얼림(경직)", unlockTier: 1 },
@@ -371,27 +374,23 @@
       POWER: { type:"base", cost: 100, range: 100, rate: 60, dmg: 40, color: "#f1c40f", name: "POWER", chain: 3, desc:"적중 시 3명의 적에게 연쇄 번개", unlockTier: 11 },
       MAX: { type:"base", cost: 130, range: 220, rate: 110, dmg: 200, color: "#8e44ad", name: "MAX", desc:"강력한 장거리 저격", unlockTier: 14 },
       
-      // 🟦 2. 레어 타워 (8종)
-      SUMIF: { type:"rare", req: ["SUM", "IFERROR"], range: 130, rate: 14, dmg: 150, color: "#e67e22", name: "SUMIF", pierce: true, desc:"[관통] 방어 쉴드 무시 직접 타격" },
-      MATCH: { type:"rare", req: ["MIN", "VLOOKUP"], range: 140, rate: 50, dmg: 100, color: "#2980b9", name: "MATCH", splash: 90, stun: 15, desc:"[폭발+기절] 얼어붙는 범위 폭발" },
-      PIVOT: { type:"rare", req: ["AVERAGE", "RATE"], range: 170, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"[오라] 인접 타워 공격력 및 사거리 버프" },
-      COUNTIFS: { type:"rare", req: ["POWER", "MAX"], range: 180, rate: 4, dmg: 50, color: "#1abc9c", name: "CNTIFS", desc:"[단일] 초고속 연사 기관총" },
-      SUBTOTAL: { type:"rare", req: ["SUM", "VLOOKUP"], range: 130, rate: 18, dmg: 80, color: "#d35400", name: "SUBTOT", splash: 65, desc:"[폭발] 빠른 속도의 광역 폭격기" },
-      SMALL: { type:"rare", req: ["MIN", "RATE"], range: 130, rate: 12, dmg: 50, color: "#fdcb6e", name: "SMALL", stun: 10, poisonSpec: { dmg: 2.0, time: 200 }, desc:"[기절+맹독] 얼음 독가스 방출" },
-      PRODUCT: { type:"rare", req: ["AVERAGE", "POWER"], range: 130, rate: 25, dmg: 90, color: "#27ae60", name: "PROD", chain: 5, desc:"[번개] 고속 5연쇄 번개 방출" },
-      EXACT: { type:"rare", req: ["IFERROR", "MAX"], range: 260, rate: 3, dmg: 120, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"[단일+둔화] 초장거리 저격 슬로우 빔" },
+      SUMIF: { type:"rare", req: ["SUM", "IFERROR"], range: 110, rate: 14, dmg: 150, color: "#e67e22", name: "SUMIF", pierce: true, desc:"[관통] 방어 쉴드 무시 직접 타격" },
+      MATCH: { type:"rare", req: ["MIN", "VLOOKUP"], range: 120, rate: 50, dmg: 100, color: "#2980b9", name: "MATCH", splash: 90, stun: 15, desc:"[폭발+기절] 얼어붙는 범위 폭발" },
+      PIVOT: { type:"rare", req: ["AVERAGE", "RATE"], range: 150, rate: 0, dmg: 0, color: "#e056fd", name: "PIVOT", aura: true, desc:"[오라] 인접 타워 공격력 및 사거리 버프" },
+      COUNTIFS: { type:"rare", req: ["POWER", "MAX"], range: 150, rate: 4, dmg: 50, color: "#1abc9c", name: "CNTIFS", desc:"[단일] 초고속 연사 기관총" },
+      SUBTOTAL: { type:"rare", req: ["SUM", "VLOOKUP"], range: 110, rate: 18, dmg: 80, color: "#d35400", name: "SUBTOT", splash: 65, desc:"[폭발] 빠른 속도의 광역 폭격기" },
+      SMALL: { type:"rare", req: ["MIN", "RATE"], range: 110, rate: 12, dmg: 50, color: "#fdcb6e", name: "SMALL", stun: 10, poisonSpec: { dmg: 2.0, time: 200 }, desc:"[기절+맹독] 얼음 독가스 방출" },
+      PRODUCT: { type:"rare", req: ["AVERAGE", "POWER"], range: 110, rate: 25, dmg: 90, color: "#27ae60", name: "PROD", chain: 5, desc:"[번개] 고속 5연쇄 번개 방출" },
+      EXACT: { type:"rare", req: ["IFERROR", "MAX"], range: 220, rate: 3, dmg: 120, color: "#2c3e50", name: "EXACT", isBeam: true, desc:"[단일+둔화] 초장거리 저격 슬로우 빔" },
 
-      // 🟪 3. 에픽 타워 (4종)
-      INDEXMATCH: { type:"epic", req: ["SUMIF", "MATCH"], range: 200, rate: 50, dmg: 400, color: "#f1c40f", name: "IDXMAT", splash: 150, stun: 20, desc:"[대폭발+기절] 엄청난 범위의 광역 빙결 폭발" },
-      XLOOKUP: { type:"epic", req: ["PIVOT", "COUNTIFS"], range: 220, rate: 4, dmg: 180, color: "#e74c3c", name: "XLOOK", pierce: true, desc:"[단일+관통] 쉴드를 찢어버리는 플라즈마 연사" },
-      FILTER: { type:"epic", req: ["SUBTOTAL", "PRODUCT"], range: 280, rate: 10, dmg: 350, color: "#3498db", name: "FILTER", splash: 80, chain: 10, desc:"[광역 번개] 10연쇄 초고압 폭발 번개" },
-      XMATCH: { type:"epic", req: ["SMALL", "EXACT"], range: 240, rate: 3, dmg: 150, color: "#c0392b", name: "XMAT", multi: 5, isBeam: true, stun: 12, desc:"[다중+마비] 5갈래 초장거리 마비 광선" },
+      INDEXMATCH: { type:"epic", req: ["SUMIF", "MATCH"], range: 170, rate: 50, dmg: 400, color: "#f1c40f", name: "IDXMAT", splash: 150, stun: 20, desc:"[대폭발+기절] 엄청난 범위의 광역 빙결 폭발" },
+      XLOOKUP: { type:"epic", req: ["PIVOT", "COUNTIFS"], range: 180, rate: 4, dmg: 180, color: "#e74c3c", name: "XLOOK", pierce: true, desc:"[단일+관통] 쉴드를 찢어버리는 플라즈마 연사" },
+      FILTER: { type:"epic", req: ["SUBTOTAL", "PRODUCT"], range: 230, rate: 10, dmg: 350, color: "#3498db", name: "FILTER", splash: 80, chain: 10, desc:"[광역 번개] 10연쇄 초고압 폭발 번개" },
+      XMATCH: { type:"epic", req: ["SMALL", "EXACT"], range: 200, rate: 3, dmg: 150, color: "#c0392b", name: "XMAT", multi: 5, isBeam: true, stun: 12, desc:"[다중+마비] 5갈래 초장거리 마비 광선" },
 
-      // 🟥 4. 전설 타워 (2종)
       LET: { type:"legend", req: ["INDEXMATCH", "XLOOKUP"], range: 300, rate: 25, dmg: 2500, color: "#f39c12", name: "LET", splash: 80, multi: 5, pierce: true, desc:"[전설] 5인 동시 타격 궤도 폭격 (관통+스플래시)" },
       RANDARRAY: { type:"legend", req: ["FILTER", "XMATCH"], range: 300, rate: 4, dmg: 600, color: "#e84393", name: "RAND", multi: 10, isBeam: true, aura: true, stun: 15, desc:"[전설] 초광역 버프 및 10갈래 파멸의 광선" },
 
-      // ⬛ 5. 히든 타워 (1종)
       LAMBDA: { type:"hidden", req: ["COUNTIFS", "SUBTOTAL", "PIVOT"], range: 350, rate: 2, dmg: 999, color: "#000", name: "LAMBDA", splash: 120, pierce: true, desc:"[히든] 차원을 붕괴시키는 절대 무기" }
     };
 
@@ -416,7 +415,7 @@
       const legRow = document.createElement('div'); legRow.className = 'tower-row'; legRow.innerHTML = `<div class="tower-row-title" style="color:#c0392b">전설 (에픽+에픽)</div>`;
       
       const hidRow = document.createElement('div'); hidRow.className = 'tower-row'; hidRow.innerHTML = `<div class="tower-row-title" style="color:#111">히든 (비밀 조합)</div>`;
-      hidRow.style.display = "flex"; // 🎯 UI 강제 생성 (힌트 없는 ??? 로 유도)
+      hidRow.style.display = "flex"; 
 
       let infoHTML = ''; let recipeHTML = '';
       
@@ -513,7 +512,6 @@
       },
       hitShield() {
         if (!this.canPlay("h_shield", 50)) return;
-        // 🎯 [사운드 변경] 둔탁하고 낮은 음으로 귀 아프지 않게 조절
         this.playOsc("triangle", 400, 200, 0.1, 0.15, 0.01); 
       },
       dimShift() { this.playOsc("sine", 800, 50, 2.0, 0.5, 0); },
@@ -522,9 +520,7 @@
       synergy() { this.playOsc("sine", 600, 1500, 0.4, 0.2, 0); } 
     };
 
-    // 🎯 [추가됨] 총 30종의 거대한 증강 라인업
     const AUGMENTS = [
-      // Silver (10)
       { tier: "Silver", name: "단두대 처형", desc: "적 체력이 15% 이하가 되면 남은 체력 무시 즉시 처형", effect: () => { executeThreshold += 0.15; } },
       { tier: "Silver", name: "연쇄 반응", desc: "적 사망 시 30% 확률로 주변(100px)에 100 데미지 폭발", effect: () => { deathExplosion = true; } },
       { tier: "Silver", name: "알뜰 살뜰", desc: "기본 타워(1티어) 설치 비용 50% 할인", effect: () => { baseCostMult = 0.5; towers.forEach(t=>t.updateStats()); } },
@@ -536,7 +532,6 @@
       { tier: "Silver", name: "철갑탄", desc: "쉴드를 보유한 적에게 2배의 피해를 입힘", effect: () => { shieldDmgMult = 2.0; } },
       { tier: "Silver", name: "기선 제압", desc: "체력이 50% 이상인 적에게 50% 추가 피해", effect: () => { healthyEnemyBuff = 1.5; } },
       
-      // Gold (10)
       { tier: "Gold", name: "도박 중독", desc: "즉시 $1,000 ~ $4,000 랜덤 획득", effect: () => { const g = Math.floor(Math.random()*3001)+1000; budget+=g; stat_gamble+=g; floatingTexts.push(new FloatingText(880/2, 490/2+40, `+$${g} 잭팟!`, "#f1c40f", true, 60)); } },
       { tier: "Gold", name: "초전도 과부하", desc: "연쇄 번개(Chain) 튕기는 횟수 2배 및 사거리 대폭 증가", effect: () => { chainMultiplier = 2; chainRangeMult = 2.0; } },
       { tier: "Gold", name: "유리 대포", desc: "모든 타워 공격력 100% 증가, 단 트래픽 최대 수용량 150으로 반토막", effect: () => { globalDmgMult *= 2.0; MAX_ENEMIES = 150; towers.forEach(t=>t.updateStats()); } },
@@ -548,7 +543,6 @@
       { tier: "Gold", name: "광란의 파티", desc: "모든 타워 공격 속도 40% 증가 (딜레이 감소)", effect: () => { globalRateMult *= 0.6; towers.forEach(t=>t.updateStats()); } },
       { tier: "Gold", name: "파괴 공작원", desc: "체력이 30% 이하인 적의 방어막(쉴드)을 즉시 파괴", effect: () => { shatterShield = true; } },
 
-      // Prismatic (10)
       { tier: "Prismatic", name: "요술사의 장갑", desc: "[더블 캐스트] 모든 투사체 타워가 100% 확률로 2연속 발사", effect: () => { doubleCast = true; } },
       { tier: "Prismatic", name: "영구 동토", desc: "기절/경직 상태인 적이 받는 모든 피해량 2배 증폭", effect: () => { stunnedDmgMult = 2.0; } },
       { tier: "Prismatic", name: "우주적 파멸", desc: "5초마다 맵 전체에 무작위 궤도 폭격 (광역 피해+기절)", effect: () => { cosmicRuin = true; } },
@@ -649,7 +643,7 @@
         
         this.hp = this.maxHp; this.shield = this.maxShield; this.currentSpeed = this.speed;
         
-        // 🎯 [너프됨] 처치 골드 극악 하향
+        // 🎯 몹 처치 골드 대폭 하락 적용
         this.reward = isBoss ? 50 : (this.type==="TANK" || this.type==="SPLITTER" ? 3 : 1);
         
         this.track = track || (Math.random() > 0.5 ? pathOuterPx : pathInnerPx);
@@ -736,7 +730,6 @@
         this.updateCoords();
       }
       
-      // 🎯 데미지 반환 연산 및 증강 폭딜 수집 로직
       takeDamage(dmg, pierce = false, stunTime = 0, poisonSpec = null) {
         if (this.isInvincible) { floatingTexts.push(new FloatingText(this.x, this.y - 20, "IMMUNE!", "#f1c40f", true)); return 0; }
         if (poisonSpec) { this.poisonTimer = poisonSpec.time; this.poisonDmg = poisonSpec.dmg * poisonDmgMult; }
@@ -769,13 +762,13 @@
             floatingTexts.push(new FloatingText(this.x + (Math.random()-0.5)*20, this.y - 20, `+$${bossHitGold}`, "#f1c40f", false, 20));
         }
         
-        if (this.hp / this.maxHp <= 0.3 && shatterShield) this.shield = 0; // 파괴 공작원 효과
+        if (this.hp / this.maxHp <= 0.3 && shatterShield) this.shield = 0; 
 
         let finalDmgToReturn = actualDmg; 
-        let isPierce = pierce || pierceAll; // 절대 방관 효과
+        let isPierce = pierce || pierceAll; 
 
         if (this.shield > 0 && !isPierce) { 
-          actualDmg *= shieldDmgMult; // 철갑탄 쉴드 추뎀
+          actualDmg *= shieldDmgMult; 
           Sound.hitShield(); this.shieldHitTimer = 15; 
           if(highQuality) { for(let i=0; i<4; i++) particles.push(new HexParticle(this.x, this.y, "#00ffff", 5)); }
           if (actualDmg > this.shield) { actualDmg -= this.shield; this.shield = 0; this.hp -= actualDmg; } 
@@ -884,12 +877,19 @@
         
         let finalDmg = (this.baseSpec.dmg * Math.pow(1.45, this.level - 1)) * globalDmgMult * auraDmgMult;
         if (this.isSynergy) finalDmg *= synergyDmgMult;
-        if (!this.baseSpec.splash && !this.baseSpec.multi && !this.baseSpec.isBeam) finalDmg *= singleTargetBuff; // 정밀 타격 버프
+        if (!this.baseSpec.splash && !this.baseSpec.multi && !this.baseSpec.isBeam) finalDmg *= singleTargetBuff; 
         this.dmg = finalDmg;
         
-        // 🎯 [너프됨] 업그레이드 비용 2.5배 뻥튀기 (극악 난이도)
+        // 🎯 타워 등급별 업글 골드 대폭 증가 차등화 적용
+        let costMulti = 1.0;
+        let expBase = 1.2;
+        if (this.baseSpec.type === "rare") { costMulti = 2.5; expBase = 1.35; } 
+        else if (this.baseSpec.type === "epic") { costMulti = 4.0; expBase = 1.5; } 
+        else if (this.baseSpec.type === "legend" || this.baseSpec.type === "hidden") { costMulti = 6.0; expBase = 1.6; } 
+        else { costMulti = 1.5; expBase = 1.2; }
+
         const baseCost = this.isSynergy ? (this.baseSpec.req.length > 2 ? 300 : 150) : (this.baseSpec.cost * baseCostMult);
-        this.upgradeCost = Math.floor(baseCost * Math.pow(1.6, this.level) * 2.0 * globalCostMult);
+        this.upgradeCost = Math.floor(baseCost * Math.pow(expBase, this.level) * costMulti * globalCostMult);
         
         this.range = (this.baseSpec.range * (1 + (this.level - 1) * 0.01)) * globalRangeMult * auraRangeMult; 
         this.rate = Math.max(2, Math.round((this.baseSpec.rate - (this.level - 1) * 0.4) * globalRateMult));
@@ -919,7 +919,7 @@
         if (this.baseSpec.aura && frame % 90 === 0) { 
             if (highQuality) shockwaves.push(new Shockwave(this.x, this.y, this.range, this.baseSpec.color)); 
         }
-        if (this.dmg <= 0) return; // 공격력 없는 오라 전용 타워 공격 패스
+        if (this.dmg <= 0) return; 
 
         let targets = [];
         if (this.baseSpec.multi) {
@@ -932,7 +932,7 @@
         
         let currentDmg = this.dmg;
         if (this.baseSpec.isBeam) currentDmg *= beamBuff;
-        if (budgetDmgMult) currentDmg *= (1 + Math.min(1.0, budget * 0.0005)); // 자본주의 버프 (2000골드 시 최대 2배)
+        if (budgetDmgMult) currentDmg *= (1 + Math.min(1.0, budget * 0.0005)); 
 
         if (this.baseSpec.isBeam && targets.length > 0) {
           this.laserTargets = targets;
@@ -961,7 +961,7 @@
           if (targets.length > 0 && this.cooldown <= 0) {
             targets.forEach(t => {
               let p = new Projectile(this.x, this.y, t, this);
-              p.currentDmg = currentDmg; // 투사체에 스탯 캡처
+              p.currentDmg = currentDmg; 
               projectiles.push(p);
               if (doubleCast) {
                   let p2 = new Projectile(this.x + (Math.random()-0.5)*15, this.y + (Math.random()-0.5)*15, t, this);
@@ -1048,7 +1048,7 @@
           }
           
           if (nextTarget) {
-            // 🎯 3색 번개 이펙트 연출 (노랑, 파랑, 검정)
+            // 🎯 번개 튕길 때 3색 이펙트 구현
             const colors = ["#f1c40f", "#3498db", "#111111"];
             const lColor = colors[Math.floor(Math.random() * colors.length)];
             if(highQuality) lightnings.push(new LightningEffect(this.target.x, this.target.y, nextTarget.x, nextTarget.y, lColor));
@@ -1056,7 +1056,7 @@
             let nextProj = new Projectile(this.target.x, this.target.y, nextTarget, this.tower, this.hitSet);
             nextProj.chainCount = this.chainCount - 1; 
             nextProj.speed = this.speed * 3.5; 
-            nextProj.currentDmg = this.currentDmg;
+            nextProj.currentDmg = this.currentDmg * 0.95; // 🎯 번개 연쇄 시 5% 데미지 감소
             projectiles.push(nextProj);
           }
         }
@@ -1231,7 +1231,7 @@
         
         if (!discoveredRecipes.includes(selectedTower)) {
           discoveredRecipes.push(selectedTower);
-          localStorage.setItem("multiverse_recipes", JSON.stringify(discoveredRecipes));
+          try { localStorage.setItem("multiverse_recipes", JSON.stringify(discoveredRecipes)); } catch(e){}
           floatingTexts.push(new FloatingText(pos.col*CELL_W + HEADER_W + 20, pos.row*CELL_H + HEADER_H - 35, "NEW RECIPE!", "#00ffff", true, 60));
           renderSidebarAndModals(); 
         } else {
@@ -1408,7 +1408,8 @@
       document.getElementById('win-title').innerText = "📊 Multiverse_Defense.xlsx - Ultimate Edition";
       
       globalDmgMult = 1.0; globalCostMult = 1.0; globalRateMult = 1.0; globalRangeMult = 1.0; refundRate = 0.7;
-      executeThreshold = 0; deathExplosion = false; baseCostMult = 1.0; poisonSpread = false; critChance = 0; critMultiplier = 2.0;
+      executeThreshold = 0; deathExplosion = false; baseCostMult = 1.0; poisonSpread = false;
+      critChance = 0; critMultiplier = 2.0;
       bossHitGold = 0; chainMultiplier = 1; chainRangeMult = 1.0; synergyDmgMult = 1.0; MAX_ENEMIES = 300;
       doubleCast = false; stunnedDmgMult = 1.0; cosmicRuin = false; giantSlayer = 0;
       budgetDmgMult = false; shieldDmgMult = 1.0; healthyEnemyBuff = 1.0; goldMultiplier = 1.0;
@@ -1481,7 +1482,7 @@
           
           if (currentTier > bestTier) {
               bestTier = currentTier;
-              localStorage.setItem("md_best_tier", bestTier);
+              try { localStorage.setItem("md_best_tier", bestTier); } catch(e){}
               document.getElementById("best-tier-badge").innerText = bestTier;
           }
 
@@ -1495,7 +1496,7 @@
         }
       }
 
-      if (passiveIncome > 0 && frame % 10 === 0) budget += passiveIncome; // 💎 황금알 거위 (매 10프레임마다 증가)
+      if (passiveIncome > 0 && frame % 10 === 0) budget += passiveIncome; 
 
       for (let i = enemies.length - 1; i >= 0; i--) {
         enemies[i].update();
