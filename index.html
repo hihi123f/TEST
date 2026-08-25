@@ -1476,7 +1476,7 @@
       
       drawExcelGrid(dim);
 
-      const spawnInterval = Math.max(7, 50 - currentTier * 5);
+      const spawnInterval = Math.max(7, 50 - currentTier * 4);
       if (frame % spawnInterval === 0) {
         enemies.push(new ErrorEnemy(currentTier, false));
         if (enemies.length >= MAX_ENEMIES) {
