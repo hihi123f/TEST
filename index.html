@@ -3,49 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>3D 건초 큐브 바늘 찾기</title>
-  <!-- 3D 렌더링 라이브러리 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <title>200만 건초 더미 파헤치기</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
-      background: #0e0c0a;
-      color: #eee;
+      background: #0a0806;
+      color: #e0dcd3;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
     }
-    #webgl-container { width: 100%; height: 100%; display: block; }
-    
+    #gameCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: block;
+      background: #140e08;
+    }
     #header-ui {
       position: absolute;
       top: max(12px, env(safe-area-inset-top));
       left: 0; width: 100%;
-      display: flex; justify-content: center;
-      pointer-events: none; z-index: 10;
+      display: flex; flex-direction: column; align-items: center;
+      pointer-events: none; z-index: 20;
     }
-    .status-card {
-      background: rgba(18, 15, 12, 0.85);
+    .status-panel {
+      background: rgba(18, 14, 10, 0.9);
       border: 1px solid #4a3f35;
-      backdrop-filter: blur(8px);
-      padding: 8px 18px;
-      border-radius: 20px;
+      padding: 8px 18px; border-radius: 20px;
       text-align: center;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.7);
     }
-    .status-card .count { font-size: 15px; font-weight: 800; color: #f5c563; }
-    .status-card .sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+    .count-text { font-size: 16px; font-weight: 900; color: #f5c563; }
+    .sub-text { font-size: 11px; color: #a89f91; margin-top: 2px; }
 
     #bottom-ui {
       position: absolute;
       bottom: max(14px, env(safe-area-inset-bottom));
       left: 0; width: 100%;
       display: flex; justify-content: center;
-      gap: 6px; padding: 0 10px; z-index: 10;
+      gap: 6px; padding: 0 10px; z-index: 20;
     }
     .tool-btn {
       flex: 1; max-width: 90px; height: 54px;
@@ -55,26 +55,26 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       cursor: pointer; transition: all 0.2s;
     }
-    .tool-btn .name { font-size: 12px; font-weight: 700; }
-    .tool-btn .req { font-size: 9px; color: #888; }
-    .tool-btn.locked { opacity: 0.35; cursor: not-allowed; }
+    .tool-btn .icon-name { font-size: 12px; font-weight: 700; }
+    .tool-btn .lock-info { font-size: 9px; color: #888; }
+    .tool-btn.locked { opacity: 0.35; cursor: not-allowed; border-color: #221a14; }
     .tool-btn.active {
       background: linear-gradient(135deg, #d4a343, #b88628);
       color: #120e06; border-color: #ffe082;
       box-shadow: 0 0 14px rgba(212, 163, 67, 0.6);
     }
-    .tool-btn.active .req { color: #2b1f07; font-weight: 600; }
+    .tool-btn.active .lock-info { color: #2b1f07; font-weight: 600; }
 
-    #toast {
-      position: absolute; top: 18%; left: 50%;
+    #unlock-toast {
+      position: absolute; top: 20%; left: 50%;
       transform: translate(-50%, -50%) scale(0.8);
-      background: rgba(20, 16, 12, 0.95);
-      border: 2px solid #f5c563;
-      padding: 10px 20px; border-radius: 16px;
-      color: #fff; font-weight: bold; font-size: 14px;
-      z-index: 50; opacity: 0; pointer-events: none; transition: all 0.3s;
+      background: rgba(15, 14, 12, 0.95);
+      border: 2px solid #f5c563; padding: 12px 20px;
+      border-radius: 16px; color: #fff; font-weight: bold; font-size: 14px;
+      z-index: 60; opacity: 0; pointer-events: none;
+      transition: all 0.3s;
     }
-    #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #unlock-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
     #win-modal {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -85,115 +85,99 @@
     #win-modal.show { opacity: 1; pointer-events: auto; }
     .win-card {
       background: #1e1913; border: 2px solid #00f0ff;
-      border-radius: 20px; padding: 28px 20px; text-align: center;
-      max-width: 300px; width: 90%;
+      border-radius: 20px; padding: 30px 20px; text-align: center;
+      max-width: 320px; width: 90%;
       box-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
-    }
-    .win-card button {
-      margin-top: 18px; width: 100%; height: 44px;
-      background: #00f0ff; border: none; border-radius: 10px;
-      font-weight: bold; cursor: pointer; color: #111;
     }
   </style>
 </head>
 <body>
 
   <div id="header-ui">
-    <div class="status-card">
-      <div class="count">남은 건초: <span id="hay-left">1,000,000</span>개</div>
-      <div class="sub">화면 드래그로 회전 | 탭하여 블록 파내기</div>
+    <div class="status-panel">
+      <div class="count-text">남은 건초: <span id="hay-count">2,000,000</span>개</div>
+      <div class="sub-text">치운 건초: <span id="cleared-count">0</span>개</div>
     </div>
   </div>
 
-  <div id="webgl-container"></div>
-  <div id="toast">🎉 새 장비 해금!</div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="unlock-toast">🎉 장비 해금!</div>
 
   <div id="bottom-ui">
-    <button class="tool-btn active" id="btn-tweezer" onclick="setTool('tweezer')">
-      <span class="name">🤏 핀셋</span>
-      <span class="req">기본 (1블록)</span>
+    <button class="tool-btn active" id="btn-tweezer" onclick="selectTool('tweezer')">
+      <span class="icon-name">🤏 핀셋</span>
+      <span class="lock-info">기본</span>
     </button>
-    <button class="tool-btn locked" id="btn-earpick" onclick="setTool('earpick')">
-      <span class="name">✨ 귀이개</span>
-      <span class="req">1만 개</span>
+    <button class="tool-btn locked" id="btn-earpick" onclick="selectTool('earpick')">
+      <span class="icon-name">✨ 귀이개</span>
+      <span class="lock-info">1만 개</span>
     </button>
-    <button class="tool-btn locked" id="btn-spoon" onclick="setTool('spoon')">
-      <span class="name">🥄 숟가락</span>
-      <span class="req">10만 개</span>
+    <button class="tool-btn locked" id="btn-spoon" onclick="selectTool('spoon')">
+      <span class="icon-name">🥄 숟가락</span>
+      <span class="lock-info">10만 개</span>
     </button>
-    <button class="tool-btn locked" id="btn-blower" onclick="setTool('blower')">
-      <span class="name">💨 송풍기</span>
-      <span class="req">50만 개</span>
+    <button class="tool-btn locked" id="btn-blower" onclick="selectTool('blower')">
+      <span class="icon-name">💨 송풍기</span>
+      <span class="lock-info">50만 개</span>
     </button>
   </div>
 
   <div id="win-modal">
     <div class="win-card">
-      <h2 style="color:#00f0ff; margin-bottom:8px;">🎉 바늘 발굴 완료!</h2>
-      <p style="color:#ccc; font-size:13px; line-height:1.4;">
-        3D 건초 큐브의 내부를 파헤쳐 중앙에 숨겨진 은바늘을 획득했습니다!
+      <h2 style="color:#00f0ff; margin-bottom:8px;">🎉 극악의 바늘 발견!</h2>
+      <p style="color:#ccc; font-size:13px; line-height:1.4; margin-bottom:20px;">
+        200만 개의 미친 건초 더미를 뚫고 바늘을 찾아냈습니다!
       </p>
-      <button onclick="initGame()">새 큐브 도전</button>
+      <button onclick="initGame()" style="width:100%; height:44px; background:#00f0ff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; color:#111;">처음부터 다시 고문받기</button>
     </div>
   </div>
 
   <script>
-    const container = document.getElementById('webgl-container');
-    const hayLeftEl = document.getElementById('hay-left');
-    const toast = document.getElementById('toast');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false }); // 성능 최적화
+    const hayCountEl = document.getElementById('hay-count');
+    const clearedCountEl = document.getElementById('cleared-count');
+    const unlockToast = document.getElementById('unlock-toast');
     const winModal = document.getElementById('win-modal');
 
-    const TOTAL_START = 1000000;
-    const GRID = 11; // 11x11x11 = 총 1,331개의 입체 블록으로 구성된 거대 큐브
-    const BLOCK_SIZE = 0.8;
-    const SPACING = 0.85;
+    let WIDTH, HEIGHT;
+    const TOTAL_START = 2000000;
+    const VISIBLE_HAYS = 9500; // 화면에 렌더링될 실제 선 개수 (매우 빽빽함)
+    const MAX_LAYERS = 14;     // 깊이감 증가
 
-    let scene, camera, renderer, controls;
-    let blocks = [];
-    let needleMesh;
     let totalHay = TOTAL_START;
     let clearedHay = 0;
     let currentTool = 'tweezer';
+    let pointers = new Map();
     let gameWon = false;
 
-    // 도구 스펙 (해금치, 파괴 반경, 100만 스케일 감소 가중치)
+    // 도구 스펙 (해금 요구치, 반경, 한 번에 파내는 깊이, 200만 차감 가중치)
     const TOOLS = {
-      tweezer: { name: '핀셋', req: 0, unlocked: true, radius: 0, scaleRate: 1 },
-      earpick: { name: '귀이개', req: 10000, unlocked: false, radius: 1, scaleRate: 8 },
-      spoon:   { name: '숟가락', req: 100000, unlocked: false, radius: 2, scaleRate: 40 },
-      blower:  { name: '송풍기', req: 500000, unlocked: false, radius: 4, scaleRate: 200 }
+      tweezer: { name: '핀셋', req: 0, unlocked: true, radius: 14, digDepth: 1, maxRemove: 3 },
+      earpick: { name: '귀이개', req: 10000, unlocked: false, radius: 36, digDepth: 2, maxRemove: 60 },
+      spoon:   { name: '숟가락', req: 100000, unlocked: false, radius: 75, digDepth: 4, maxRemove: 550 },
+      blower:  { name: '송풍기', req: 500000, unlocked: false, radius: 150, digDepth: 14, maxRemove: 4000 }
     };
 
-    function initThree() {
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0e0c0a);
+    let hays = [];
+    const needle = { x: 0, y: 0, angle: 0, length: 46, found: false };
 
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-      camera.position.set(12, 10, 15);
+    // 정규분포(가우시안) 난수 생성기 -> 건초가 중앙에 산더미처럼 쌓이게 만듦
+    function randn_bm() {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+    }
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
-      container.appendChild(renderer.domElement);
-
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.maxDistance = 25;
-      controls.minDistance = 4;
-
-      // 조명
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
-
-      const dirLight = new THREE.DirectionalLight(0xffd580, 1.0);
-      dirLight.position.set(10, 15, 10);
-      scene.add(dirLight);
-
-      const blueLight = new THREE.PointLight(0x00f0ff, 1.5, 10);
-      blueLight.position.set(0, 0, 0);
-      scene.add(blueLight);
+    function resize() {
+      WIDTH = window.innerWidth;
+      HEIGHT = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = WIDTH * dpr;
+      canvas.height = HEIGHT * dpr;
+      ctx.scale(dpr, dpr);
+      draw();
     }
 
     function initGame() {
@@ -203,66 +187,44 @@
       clearedHay = 0;
       updateUI();
 
-      // 기존 블록 제거
-      blocks.forEach(b => scene.remove(b.mesh));
-      blocks = [];
-      if (needleMesh) scene.remove(needleMesh);
+      // 바늘을 화면 중앙 부근 가장 바닥에 랜덤 배치
+      needle.x = WIDTH / 2 + (Math.random() - 0.5) * (WIDTH * 0.4);
+      needle.y = HEIGHT / 2 + (Math.random() - 0.5) * (HEIGHT * 0.4);
+      needle.angle = Math.random() * Math.PI * 2;
 
-      // 건초 블록 텍스처 머티리얼들
-      const hayMats = [
-        new THREE.MeshLambertMaterial({ color: 0xc8963e }),
-        new THREE.MeshLambertMaterial({ color: 0xdfab43 }),
-        new THREE.MeshLambertMaterial({ color: 0xa8782a }),
-        new THREE.MeshLambertMaterial({ color: 0x8a601c })
-      ];
-      const boxGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+      hays = [];
+      for (let i = 0; i < VISIBLE_HAYS; i++) {
+        // 레이어가 위로 갈수록 좁게 뭉쳐지도록 산등성이 형태 구현
+        const layer = Math.floor(Math.random() * MAX_LAYERS);
+        const spread = (MAX_LAYERS - layer * 0.5) / MAX_LAYERS;
+        
+        const x = WIDTH / 2 + (randn_bm() * (WIDTH * 0.25 * spread));
+        const y = HEIGHT / 2 + (randn_bm() * (HEIGHT * 0.22 * spread));
 
-      const offset = (GRID - 1) * SPACING / 2;
-
-      // 11x11x11 큐브 생성
-      for (let x = 0; x < GRID; x++) {
-        for (let y = 0; y < GRID; y++) {
-          for (let z = 0; z < GRID; z++) {
-            // 정중앙 바늘 들어갈 자리는 비워둠
-            if (x >= 4 && x <= 6 && y >= 4 && y <= 6 && z >= 4 && z <= 6) {
-              continue;
-            }
-
-            const mat = hayMats[Math.floor(Math.random() * hayMats.length)];
-            const mesh = new THREE.Mesh(boxGeo, mat);
-            mesh.position.set(x * SPACING - offset, y * SPACING - offset, z * SPACING - offset);
-            mesh.userData = { gridX: x, gridY: y, gridZ: z };
-            scene.add(mesh);
-            blocks.push({ mesh, x, y, z });
-          }
-        }
+        hays.push({
+          x: x,
+          y: y,
+          layer: layer,
+          length: 18 + Math.random() * 20, // 얇고 곧은 일자 선
+          thickness: 1.2 + layer * 0.15,
+          angle: Math.random() * Math.PI * 2,
+          color: `hsl(${36 + Math.random() * 10}, ${60 + Math.random() * 20}%, ${15 + layer * 4.5}%)`
+        });
       }
 
-      // 정중앙에 은바늘 생성 (메탈릭 실버)
-      const needleGeo = new THREE.CylinderGeometry(0.06, 0.02, 2.8, 16);
-      const needleMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        metalness: 0.95,
-        roughness: 0.1,
-        emissive: 0x00f0ff,
-        emissiveIntensity: 0.3
-      });
-      needleMesh = new THREE.Mesh(needleGeo, needleMat);
-      needleMesh.rotation.z = Math.PI / 4;
-      needleMesh.rotation.x = Math.PI / 6;
-      needleMesh.userData = { isNeedle: true };
-      scene.add(needleMesh);
+      // 렌더링 순서를 위해 Z축(layer) 정렬
+      hays.sort((a, b) => a.layer - b.layer);
 
-      // 툴 초기화
       Object.keys(TOOLS).forEach(k => {
         TOOLS[k].unlocked = TOOLS[k].req === 0;
         const btn = document.getElementById(`btn-${k}`);
         if (btn) btn.classList.toggle('locked', !TOOLS[k].unlocked);
       });
-      setTool('tweezer');
+      selectTool('tweezer');
+      draw();
     }
 
-    function setTool(key) {
+    function selectTool(key) {
       if (!TOOLS[key].unlocked) return;
       currentTool = key;
       Object.keys(TOOLS).forEach(k => {
@@ -271,15 +233,11 @@
       });
     }
 
-    function updateUI() {
-      hayLeftEl.innerText = totalHay.toLocaleString();
-    }
-
-    function showToast(name) {
-      toast.innerText = `🔓 [${name}] 장비 해금!`;
-      toast.classList.add('show');
-      if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
-      setTimeout(() => toast.classList.remove('show'), 1800);
+    function showUnlockToast(name) {
+      unlockToast.innerText = `🔓 [${name}] 장비 해금!`;
+      unlockToast.classList.add('show');
+      if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+      setTimeout(() => unlockToast.classList.remove('show'), 1800);
     }
 
     function checkUnlocks() {
@@ -287,93 +245,196 @@
         if (!TOOLS[k].unlocked && clearedHay >= TOOLS[k].req) {
           TOOLS[k].unlocked = true;
           document.getElementById(`btn-${k}`).classList.remove('locked');
-          showToast(TOOLS[k].name);
+          showUnlockToast(TOOLS[k].name);
         }
       });
     }
 
-    // 터치/클릭한 블록 파괴 로직
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let touchStartTime = 0;
-
-    window.addEventListener('pointerdown', () => { touchStartTime = Date.now(); });
-
-    window.addEventListener('pointerup', (e) => {
-      // 250ms 이하의 탭(클릭) 동작만 채굴로 인식 (드래그 회전과 구분)
-      if (Date.now() - touchStartTime > 250 || gameWon) return;
-
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(scene.children);
-
-      if (intersects.length > 0) {
-        const hit = intersects[0].object;
-
-        // 바늘 탭했을 때 클리어 판정
-        if (hit.userData.isNeedle) {
-          gameWon = true;
-          if (navigator.vibrate) navigator.vibrate([150, 80, 200]);
-          winModal.classList.add('show');
-          return;
-        }
-
-        if (hit.userData.gridX !== undefined) {
-          const target = hit.userData;
-          const tool = TOOLS[currentTool];
-          const rad = tool.radius;
-
-          // 반경 내 블록들 제거
-          const toRemove = [];
-          blocks = blocks.filter(b => {
-            const dx = Math.abs(b.x - target.gridX);
-            const dy = Math.abs(b.y - target.gridY);
-            const dz = Math.abs(b.z - target.gridZ);
-
-            if (dx <= rad && dy <= rad && dz <= rad) {
-              toRemove.push(b.mesh);
-              return false;
-            }
-            return true;
-          });
-
-          toRemove.forEach(mesh => scene.remove(mesh));
-
-          // 수치 차감 및 해금
-          const removedCount = Math.max(1, toRemove.length) * (tool.scaleRate * 250);
-          totalHay = Math.max(0, totalHay - removedCount);
-          clearedHay += removedCount;
-          updateUI();
-          checkUnlocks();
-
-          if (navigator.vibrate) navigator.vibrate(30);
-        }
-      }
-    });
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-
-      // 바늘 회전 & 반짝임
-      if (needleMesh) {
-        needleMesh.rotation.y += 0.02;
-      }
-
-      renderer.render(scene, camera);
+    function updateUI() {
+      hayCountEl.innerText = totalHay.toLocaleString();
+      clearedCountEl.innerText = clearedHay.toLocaleString();
     }
 
-    initThree();
+    function digAt(x, y) {
+      if (gameWon) return;
+
+      const tool = TOOLS[currentTool];
+      const r = tool.radius;
+
+      let maxLayerInArea = -1;
+      for (let i = 0; i < hays.length; i++) {
+        if (Math.hypot(hays[i].x - x, hays[i].y - y) < r) {
+          if (hays[i].layer > maxLayerInArea) maxLayerInArea = hays[i].layer;
+        }
+      }
+
+      if (maxLayerInArea === -1) return;
+
+      const minLayerToRemove = Math.max(0, maxLayerInArea - tool.digDepth + 1);
+      const prevCount = hays.length;
+
+      // 터치 반경 내 건초 영구 삭제
+      hays = hays.filter(hay => {
+        const inRadius = Math.hypot(hay.x - x, hay.y - y) < r;
+        return !(inRadius && hay.layer >= minLayerToRemove);
+      });
+
+      const removedVisual = prevCount - hays.length;
+
+      if (removedVisual > 0) {
+        // 200만 수치 차감 처리
+        const addCleared = Math.min(totalHay, Math.floor(tool.maxRemove * (Math.random() * 0.4 + 0.8)));
+        totalHay -= addCleared;
+        clearedHay += addCleared;
+        updateUI();
+        checkUnlocks();
+
+        // 바늘 발견 판정
+        const distToNeedle = Math.hypot(x - needle.x, y - needle.y);
+        if (distToNeedle < 35) {
+          const coveringCount = hays.filter(h => Math.hypot(h.x - needle.x, h.y - needle.y) < 25).length;
+          if (coveringCount <= 3) {
+            gameWon = true;
+            if (navigator.vibrate) navigator.vibrate([150, 80, 150, 80, 300]);
+            winModal.classList.add('show');
+          }
+        }
+        draw();
+      }
+    }
+
+    function draw() {
+      // 바닥(흙)
+      ctx.fillStyle = '#0f0a06';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // 바닥에 놓인 은바늘
+      const cos = Math.cos(needle.angle);
+      const sin = Math.sin(needle.angle);
+      const x1 = needle.x - (cos * needle.length) / 2;
+      const y1 = needle.y - (sin * needle.length) / 2;
+      const x2 = needle.x + (cos * needle.length) / 2;
+      const y2 = needle.y + (sin * needle.length) / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineWidth = 3.5;
+      
+      // 바늘 그라데이션 금속 느낌
+      const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+      grad.addColorStop(0, '#778899');
+      grad.addColorStop(0.5, '#ffffff');
+      grad.addColorStop(1, '#4f5d68');
+      
+      ctx.strokeStyle = grad;
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 12;
+      ctx.lineCap = 'round';
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // 바늘 귀
+      ctx.fillStyle = '#0f0a06';
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(x1 + cos * 5, y1 + sin * 5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 빽빽한 200만 건초 무덤 렌더링
+      hays.forEach(hay => {
+        const c = Math.cos(hay.angle) * (hay.length / 2);
+        const s = Math.sin(hay.angle) * (hay.length / 2);
+
+        // 상단 레이어일수록 입체감을 위한 미세한 그림자
+        if (hay.layer > 3) {
+          ctx.beginPath();
+          ctx.lineWidth = hay.thickness;
+          ctx.strokeStyle = `rgba(5, 3, 2, ${hay.layer * 0.05})`;
+          ctx.moveTo(hay.x - c + hay.layer * 0.4, hay.y - s + hay.layer * 0.6);
+          ctx.lineTo(hay.x + c + hay.layer * 0.4, hay.y + s + hay.layer * 0.6);
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.lineWidth = hay.thickness;
+        ctx.strokeStyle = hay.color;
+        ctx.lineCap = 'round';
+        ctx.moveTo(hay.x - c, hay.y - s);
+        ctx.lineTo(hay.x + c, hay.y + s);
+        ctx.stroke();
+      });
+
+      // 툴 반경 가이드
+      pointers.forEach(p => {
+        if (p.active) {
+          ctx.save();
+          const tool = TOOLS[currentTool];
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, tool.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = currentTool === 'blower' ? 'rgba(0, 240, 255, 0.5)' : 'rgba(245, 197, 99, 0.5)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
+
+    function handlePointer(id, x, y, active) {
+      if (active) {
+        pointers.set(id, { x, y, active });
+        digAt(x, y);
+      } else {
+        pointers.delete(id);
+        draw();
+      }
+    }
+
+    // 모바일 터치 이벤트
+    window.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        handlePointer(t.identifier, t.clientX, t.clientY, true);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        handlePointer(t.identifier, t.clientX, t.clientY, true);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        handlePointer(e.changedTouches[i].identifier, 0, 0, false);
+      }
+    });
+
+    // PC 마우스 이벤트
+    let isMouseDown = false;
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return;
+      isMouseDown = true;
+      handlePointer('mouse', e.clientX, e.clientY, true);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isMouseDown) handlePointer('mouse', e.clientX, e.clientY, true);
+    });
+
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      handlePointer('mouse', 0, 0, false);
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
     initGame();
-    animate();
   </script>
 </body>
 </html>
