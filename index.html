@@ -642,7 +642,7 @@
         else this.type = "NORMAL";
 
         this.baseSpeed = 1.3 + Math.min(2.5, tier * 0.1);
-        const baseHp = 35 * Math.pow(1.25, tier - 1);
+        const baseHp = 35 * Math.pow(1.15, tier - 1);
         this.maxShield = 0;
         
         const tagSplit = dimName==="EXCEL" ? "#SPILL!" : (dimName==="HWP" ? "구역나누기" : (dimName==="PPT" ? "슬라이드복제" : "Fork()"));
