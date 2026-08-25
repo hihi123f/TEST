@@ -2,249 +2,509 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <!-- 모바일 최적화: 화면 확대/축소 방지, 꽉 찬 화면 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>건초 더미에서 바늘 찾기 (Mobile)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>3D 건초 더미에서 바늘 찾기 (Mobile)</title>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
       width: 100%;
       height: 100%;
-      background-color: #111;
-      color: #eee;
-      font-family: 'Pretendard', sans-serif;
-      overflow: hidden; /* 스크롤 방지 */
-      touch-action: none; /* 브라우저 기본 터치 액션(새로고침 등) 완벽 차단 */
+      overflow: hidden;
+      background: #0d0c0a;
+      color: #e0dcd3;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    #ui {
+    #gameCanvas {
       position: absolute;
-      top: 5%;
+      top: 0;
       left: 0;
       width: 100%;
-      text-align: center;
-      pointer-events: none; /* UI가 터치를 방해하지 않게 */
-      z-index: 10;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    }
-    h2 { margin: 0; font-size: 22px; color: #f1c40f; }
-    p { margin: 8px 0 0 0; font-size: 15px; color: #aaa; }
-    #count { color: #fff; font-weight: bold; }
-    
-    canvas {
+      height: 100%;
       display: block;
+      background: #18120b;
+    }
+    /* 상단 상태 바 */
+    #header-ui {
+      position: absolute;
+      top: max(16px, env(safe-area-inset-top));
+      left: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .title-badge {
+      background: rgba(20, 16, 12, 0.85);
+      border: 1px solid #4a3f35;
+      backdrop-filter: blur(8px);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #f5c563;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    /* 하단 모바일 컨트롤 도구 바 */
+    #bottom-ui {
+      position: absolute;
+      bottom: max(20px, env(safe-area-inset-bottom));
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding: 0 16px;
+      z-index: 20;
+    }
+    .tool-btn {
+      flex: 1;
+      max-width: 150px;
+      height: 52px;
+      background: rgba(35, 29, 23, 0.9);
+      border: 1.5px solid #4e4033;
+      backdrop-filter: blur(10px);
+      color: #cfc6b8;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .tool-btn:active {
+      transform: scale(0.94);
+    }
+    .tool-btn.active {
+      background: linear-gradient(135deg, #d4a343, #b88628);
+      color: #120e06;
+      border-color: #ffe082;
+      box-shadow: 0 0 20px rgba(212, 163, 67, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+    }
+    .reset-btn {
+      width: 52px;
+      max-width: 52px;
+      flex: 0 0 52px;
+      font-size: 20px;
+    }
+    /* 승리 모달 */
+    #win-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
-      background: #1c1712;
-    }
-
-    #win-screen {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(10, 9, 7, 0.85);
+      backdrop-filter: blur(12px);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      z-index: 50;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.5s;
-      z-index: 20;
+      transition: opacity 0.4s ease;
+      padding: 24px;
+      text-align: center;
     }
-    #win-screen.show {
+    #win-modal.show {
       opacity: 1;
       pointer-events: auto;
     }
-    .btn {
-      margin-top: 20px;
-      padding: 12px 24px;
-      background: #f1c40f;
-      color: #111;
-      border: none;
-      border-radius: 8px;
-      font-size: 18px;
+    .win-card {
+      background: #1e1913;
+      border: 2px solid #00f0ff;
+      border-radius: 20px;
+      padding: 32px 24px;
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
+      max-width: 320px;
+      width: 100%;
+      transform: translateY(20px) scale(0.92);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #win-modal.show .win-card {
+      transform: translateY(0) scale(1);
+    }
+    .win-card h2 {
+      color: #00f0ff;
+      font-size: 26px;
+      margin-bottom: 8px;
+    }
+    .win-card p {
+      color: #cfc6b8;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .win-card button {
+      width: 100%;
+      height: 48px;
+      background: #00f0ff;
+      color: #0d1117;
+      font-size: 16px;
       font-weight: bold;
+      border: none;
+      border-radius: 12px;
       cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
     }
   </style>
 </head>
 <body>
 
-  <div id="ui">
-    <h2>🌾 건초 파헤치기</h2>
-    <p>손가락으로 문질러 바늘을 찾으세요!<br>남은 건초: <span id="count">0</span>개</p>
+  <div id="header-ui">
+    <div class="title-badge">🌾 건초를 파헤쳐 숨겨진 은바늘을 찾으세요!</div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
-  <div id="win-screen">
-    <h1 style="color:#00ffff; margin:0 0 10px 0;">🎉 바늘 발견!</h1>
-    <p style="color:#ddd; margin-bottom: 20px; font-size:16px;">당신의 집요함이 승리했습니다.</p>
-    <button class="btn" onclick="initGame()">다시 도전하기</button>
+  <div id="bottom-ui">
+    <button class="tool-btn active" id="btn-shovel" onclick="setTool('shovel')">🥄 삽 (파헤치기)</button>
+    <button class="tool-btn" id="btn-blower" onclick="setTool('blower')">💨 송풍기 (날리기)</button>
+    <button class="tool-btn reset-btn" onclick="initGame()">🔄</button>
+  </div>
+
+  <div id="win-modal">
+    <div class="win-card">
+      <h2>🎉 바늘 발견!</h2>
+      <p>수천 겹의 건초 더미를 뚫고 마침내 은바늘을 찾아냈습니다!</p>
+      <button onclick="initGame()">한 번 더 도전</button>
+    </div>
   </div>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const countDisplay = document.getElementById('count');
-    const winScreen = document.getElementById('win-screen');
+    const winModal = document.getElementById('win-modal');
 
     let WIDTH, HEIGHT;
-    let hays = [];
-    let needle = { x: 0, y: 0, found: false };
-    
-    // 모바일 폰 사양을 고려해 건초 개수 타협 (충분히 많아 보임)
-    const MAX_HAYS = 3500; 
-    const TOUCH_RADIUS = 45; // 손가락으로 문지르는 범위 (지우개 크기)
+    const HAY_COUNT = 3200; // 모바일 최적화 수량
+
+    let currentTool = 'shovel';
+    let pointers = new Map(); // 멀티터치 관리
+    let gameWon = false;
+
+    // 조명 벡터 (3D 그림자용)
+    const LIGHT = { x: 0.7, y: 0.9 };
 
     function resize() {
       WIDTH = window.innerWidth;
       HEIGHT = window.innerHeight;
-      canvas.width = WIDTH;
-      canvas.height = HEIGHT;
-      draw(); // 크기 변경 시 화면 다시 그리기
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = WIDTH * dpr;
+      canvas.height = HEIGHT * dpr;
+      ctx.scale(dpr, dpr);
     }
+
+    // 2.5D 건초 클래스
+    class Hay {
+      constructor(isTopLayer = false) {
+        this.reset(isTopLayer);
+      }
+
+      reset(isTopLayer) {
+        this.x = WIDTH / 2 + (Math.random() - 0.5) * (WIDTH * 0.95);
+        this.y = HEIGHT / 2 + (Math.random() - 0.5) * (HEIGHT * 0.85);
+        this.z = isTopLayer ? Math.random() * 45 + 35 : Math.random() * 50;
+        
+        this.length = Math.random() * 24 + 16;
+        this.thickness = Math.random() * 1.5 + 2.0;
+        this.angle = Math.random() * Math.PI * 2;
+        this.angVel = (Math.random() - 0.5) * 0.04;
+
+        this.vx = 0;
+        this.vy = 0;
+        this.vz = 0;
+
+        const hue = 38 + Math.random() * 12;
+        const sat = 65 + Math.random() * 25;
+        this.baseLight = 28 + Math.random() * 30;
+        this.color = `hsl(${hue}, ${sat}%, `;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.z += this.vz;
+        this.angle += this.angVel;
+
+        this.vx *= 0.88;
+        this.vy *= 0.88;
+        this.angVel *= 0.85;
+
+        if (this.z > 0) {
+          this.vz -= 0.65;
+        } else {
+          this.z = 0;
+          this.vz = 0;
+        }
+
+        if (this.x < 15) { this.x = 15; this.vx *= -0.5; }
+        if (this.x > WIDTH - 15) { this.x = WIDTH - 15; this.vx *= -0.5; }
+        if (this.y < 15) { this.y = 15; this.vy *= -0.5; }
+        if (this.y > HEIGHT - 15) { this.y = HEIGHT - 15; this.vy *= -0.5; }
+      }
+
+      draw(ctx) {
+        const zScale = 1 + this.z * 0.006;
+        const renderLen = this.length * zScale;
+        const renderThick = this.thickness * zScale;
+
+        const cos = Math.cos(this.angle);
+        const sin = Math.sin(this.angle);
+
+        const x1 = this.x - (cos * renderLen) / 2;
+        const y1 = this.y - (sin * renderLen) / 2;
+        const x2 = this.x + (cos * renderLen) / 2;
+        const y2 = this.y + (sin * renderLen) / 2;
+
+        if (this.z > 2) {
+          const shadowDist = this.z * 0.45;
+          ctx.beginPath();
+          ctx.lineWidth = renderThick;
+          ctx.strokeStyle = `rgba(8, 6, 4, ${Math.max(0.12, 0.48 - this.z * 0.003)})`;
+          ctx.moveTo(x1 + LIGHT.x * shadowDist, y1 + LIGHT.y * shadowDist);
+          ctx.lineTo(x2 + LIGHT.x * shadowDist, y2 + LIGHT.y * shadowDist);
+          ctx.stroke();
+        }
+
+        const currentLight = Math.min(85, this.baseLight + this.z * 0.4);
+        ctx.beginPath();
+        ctx.lineWidth = renderThick;
+        ctx.strokeStyle = `${this.color}${currentLight}%)`;
+        ctx.lineCap = 'round';
+        ctx.moveTo(x1, y1 - this.z * 0.22);
+        ctx.lineTo(x2, y2 - this.z * 0.22);
+        ctx.stroke();
+      }
+    }
+
+    // 바늘 객체
+    const needle = {
+      x: 0,
+      y: 0,
+      angle: 0,
+      length: 46,
+      thickness: 3.5,
+      glintPhase: 0,
+      reset() {
+        this.x = WIDTH * 0.2 + Math.random() * (WIDTH * 0.6);
+        this.y = HEIGHT * 0.25 + Math.random() * (HEIGHT * 0.5);
+        this.angle = Math.random() * Math.PI * 2;
+      },
+      draw(ctx) {
+        this.glintPhase += 0.06;
+        const cos = Math.cos(this.angle);
+        const sin = Math.sin(this.angle);
+
+        const x1 = this.x - (cos * this.length) / 2;
+        const y1 = this.y - (sin * this.length) / 2;
+        const x2 = this.x + (cos * this.length) / 2;
+        const y2 = this.y + (sin * this.length) / 2;
+
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        const glint = (Math.sin(this.glintPhase) + 1) / 2;
+        grad.addColorStop(0, '#88929b');
+        grad.addColorStop(Math.min(0.95, Math.max(0.05, glint)), '#ffffff');
+        grad.addColorStop(1, '#4f5d68');
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = this.thickness;
+        ctx.strokeStyle = grad;
+        ctx.lineCap = 'round';
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#18120b';
+        ctx.beginPath();
+        ctx.arc(x1 + cos * 4.5, y1 + sin * 4.5, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (glint > 0.75) {
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 12;
+          ctx.fillRect(x1 + cos * (this.length * glint) - 1.5, y1 + sin * (this.length * glint) - 1.5, 4, 4);
+        }
+        ctx.restore();
+      }
+    };
+
+    let hays = [];
 
     function initGame() {
-      winScreen.classList.remove('show');
-      needle.found = false;
+      gameWon = false;
+      winModal.classList.remove('show');
+      needle.reset();
       hays = [];
-
-      // 바늘은 화면 중앙을 기준으로 70% 영역 안쪽 어딘가에 랜덤 배치
-      needle.x = (WIDTH * 0.15) + Math.random() * (WIDTH * 0.7);
-      needle.y = (HEIGHT * 0.15) + Math.random() * (HEIGHT * 0.7);
-
-      // 건초 생성 (화면 중앙 위주로 뭉치게)
-      for (let i = 0; i < MAX_HAYS; i++) {
-        hays.push({
-          x: (WIDTH / 2) + (Math.random() - 0.5) * (WIDTH * 0.9),
-          y: (HEIGHT / 2) + (Math.random() - 0.5) * (HEIGHT * 0.9),
-          length: Math.random() * 20 + 15,
-          angle: Math.random() * Math.PI,
-          color: `hsl(${35 + Math.random() * 15}, 70%, ${25 + Math.random() * 35}%)`
-        });
+      for (let i = 0; i < HAY_COUNT; i++) {
+        hays.push(new Hay(i > HAY_COUNT * 0.4));
       }
-      updateCount();
-      draw();
     }
 
-    function updateCount() {
-      countDisplay.innerText = hays.length;
+    function setTool(tool) {
+      currentTool = tool;
+      document.getElementById('btn-shovel').classList.toggle('active', tool === 'shovel');
+      document.getElementById('btn-blower').classList.toggle('active', tool === 'blower');
     }
 
-    function draw() {
-      // 배경 초기화
-      ctx.fillStyle = '#1c1712';
+    function applyInteractions() {
+      const isBlower = currentTool === 'blower';
+      const radius = isBlower ? 140 : 75;
+
+      pointers.forEach((p) => {
+        if (!p.active) return;
+
+        hays.forEach(hay => {
+          const dx = hay.x - p.x;
+          const dy = hay.y - p.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < radius) {
+            const power = (1 - dist / radius);
+
+            if (isBlower) {
+              const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.4;
+              const force = power * 24;
+              hay.vx += Math.cos(angle) * force;
+              hay.vy += Math.sin(angle) * force;
+              hay.vz += power * 16;
+              hay.angVel += (Math.random() - 0.5) * 0.35;
+            } else {
+              hay.vx += p.vx * 0.7 + (dx / (dist || 1)) * 5 * power;
+              hay.vy += p.vy * 0.7 + (dy / (dist || 1)) * 5 * power;
+              hay.vz += power * 9;
+              hay.angVel += (p.vx + p.vy) * 0.012;
+            }
+          }
+        });
+
+        if (!gameWon) {
+          const distToNeedle = Math.hypot(p.x - needle.x, p.y - needle.y);
+          if (distToNeedle < 45) {
+            let coveringHays = 0;
+            for (let i = 0; i < hays.length; i++) {
+              const h = hays[i];
+              if (Math.hypot(h.x - needle.x, h.y - needle.y) < 30 && h.z < 25) {
+                coveringHays++;
+                if (coveringHays >= 6) break;
+              }
+            }
+            if (coveringHays < 6) {
+              gameWon = true;
+              if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+              winModal.classList.add('show');
+            }
+          }
+        }
+      });
+    }
+
+    function handlePointer(id, x, y, active) {
+      if (!pointers.has(id)) {
+        pointers.set(id, { x, y, prevX: x, prevY: y, vx: 0, vy: 0, active });
+      } else {
+        const p = pointers.get(id);
+        p.vx = x - p.prevX;
+        p.vy = y - p.prevY;
+        p.prevX = x;
+        p.prevY = y;
+        p.x = x;
+        p.y = y;
+        p.active = active;
+      }
+    }
+
+    window.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        handlePointer(t.identifier, t.clientX, t.clientY, true);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        handlePointer(t.identifier, t.clientX, t.clientY, true);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        pointers.delete(e.changedTouches[i].identifier);
+      }
+    });
+
+    let isMouseDown = false;
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      isMouseDown = true;
+      handlePointer('mouse', e.clientX, e.clientY, true);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isMouseDown) handlePointer('mouse', e.clientX, e.clientY, true);
+    });
+
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      pointers.delete('mouse');
+    });
+
+    function loop() {
+      ctx.fillStyle = '#16110b';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      // 1. 바늘 그리기 (가장 바닥)
-      ctx.save();
-      ctx.translate(needle.x, needle.y);
-      ctx.rotate(Math.PI / 4); // 살짝 기울임
-      
-      // 바늘 그림자
-      ctx.shadowColor = '#00ffff';
-      ctx.shadowBlur = 8;
-      
-      ctx.strokeStyle = '#e0ffff'; // 은빛/하늘색
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
+      ctx.fillStyle = '#100b06';
       ctx.beginPath();
-      ctx.moveTo(-20, 0);
-      ctx.lineTo(20, 0);
-      ctx.stroke();
-      
-      // 바늘 귀
-      ctx.fillStyle = '#1c1712';
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.arc(15, 0, 1.5, 0, Math.PI * 2);
+      ctx.arc(WIDTH / 2, HEIGHT / 2, Math.min(WIDTH, HEIGHT) * 0.7, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
 
-      // 2. 건초 그리기 (바늘 위를 덮음)
-      hays.forEach(hay => {
-        ctx.strokeStyle = hay.color;
-        ctx.lineWidth = 2; // 모바일에선 조금 더 두껍게
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        const cos = Math.cos(hay.angle) * (hay.length / 2);
-        const sin = Math.sin(hay.angle) * (hay.length / 2);
-        ctx.moveTo(hay.x - cos, hay.y - sin);
-        ctx.lineTo(hay.x + cos, hay.y + sin);
-        ctx.stroke();
-      });
-    }
+      needle.draw(ctx);
+      applyInteractions();
 
-    // 터치 및 마우스로 건초 지우기 로직
-    function digHay(clientX, clientY) {
-      if (needle.found) return;
+      hays.sort((a, b) => a.z - b.z);
 
-      let removed = false;
-      
-      // 터치 반경(TOUCH_RADIUS) 내의 건초 필터링(제거)
-      const prevLength = hays.length;
-      hays = hays.filter(hay => {
-        const dist = Math.hypot(hay.x - clientX, hay.y - clientY);
-        return dist > TOUCH_RADIUS; 
+      for (let i = 0; i < hays.length; i++) {
+        hays[i].update();
+        hays[i].draw(ctx);
+      }
+
+      pointers.forEach(p => {
+        if (p.active) {
+          ctx.save();
+          const isBlower = currentTool === 'blower';
+          const r = isBlower ? 140 : 75;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.strokeStyle = isBlower ? 'rgba(0, 240, 255, 0.45)' : 'rgba(245, 197, 99, 0.45)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 6]);
+          ctx.stroke();
+          ctx.restore();
+        }
       });
 
-      if (hays.length < prevLength) {
-        removed = true;
-        updateCount();
-      }
-
-      // 건초가 지워졌을 때만 바늘 발견 체크 및 화면 다시 그리기 (배터리 절약)
-      if (removed) {
-        checkWinCondition(clientX, clientY);
-        draw();
-      }
-    }
-
-    function checkWinCondition(x, y) {
-      // 터치한 곳이 바늘과 가까운지 확인
-      const distToNeedle = Math.hypot(x - needle.x, y - needle.y);
-      if (distToNeedle < 40) {
-        // 바늘 주변에 남은 건초가 3개 이하인지 확인 (다 걷어냈는지)
-        const coveringHays = hays.filter(h => Math.hypot(h.x - needle.x, h.y - needle.y) < 30).length;
-        if (coveringHays <= 3) {
-          needle.found = true;
-          // 모바일 진동 효과 (지원하는 기기에서만 작동)
-          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-          winScreen.classList.add('show');
-        }
-      }
-    }
-
-    // --- 이벤트 리스너 (터치 & 마우스 동시 지원) ---
-    function handleInteraction(e) {
-      e.preventDefault(); // 스크롤 등 기본 동작 방지
-      // 터치 이벤트인지 마우스 이벤트인지 구분
-      if (e.touches) {
-        for (let i = 0; i < e.touches.length; i++) {
-          digHay(e.touches[i].clientX, e.touches[i].clientY);
-        }
-      } else {
-        // 마우스 클릭 상태일 때만
-        if (e.buttons > 0) {
-          digHay(e.clientX, e.clientY);
-        }
-      }
+      requestAnimationFrame(loop);
     }
 
     window.addEventListener('resize', resize);
-    
-    // 터치 이벤트 (스마트폰)
-    canvas.addEventListener('touchstart', handleInteraction, { passive: false });
-    canvas.addEventListener('touchmove', handleInteraction, { passive: false });
-    
-    // 마우스 이벤트 (PC 테스트용)
-    canvas.addEventListener('mousedown', handleInteraction);
-    canvas.addEventListener('mousemove', handleInteraction);
-
-    // 초기화 실행
     resize();
     initGame();
+    loop();
   </script>
 </body>
 </html>
