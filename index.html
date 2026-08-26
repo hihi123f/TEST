@@ -29,18 +29,20 @@
     .btn-main:active { transform: scale(0.96); }
     .btn-main:disabled { opacity: 0.7; cursor: not-allowed; }
 
+    /* 팝업 폴라로이드 스타일 */
     .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; padding: 0; }
     .leaflet-popup-tip-container { display: none; }
     .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 145px; position: relative; text-align: center; }
     .masking-tape { position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-3deg); width: 55px; height: 20px; background: rgba(255, 234, 167, 0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 2; }
-    .map-polaroid video { width: 100%; height: 95px; object-fit: cover; background: #222; border-radius: 2px; }
+    .map-polaroid img { width: 100%; height: 95px; object-fit: cover; background: #222; border-radius: 2px; }
     .map-polaroid-land { font-size: 0.75rem; color: #ff5252; font-weight: bold; margin-top: 6px; }
     .map-polaroid-text { margin-top: 3px; font-size: 0.75rem; color: #333; line-height: 1.2; word-break: break-all; }
     .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 4px; }
 
+    /* 카메라 & 캡처 모달 */
     #captureOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; }
     .big-polaroid { background: #fff; padding: 12px 12px 24px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; }
-    .big-polaroid video { width: 100%; height: 230px; object-fit: cover; background: #000; }
+    .big-polaroid video, .big-polaroid img { width: 100%; height: 230px; object-fit: cover; background: #000; }
     
     #diarySection { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
     .sticker-picker { display: flex; justify-content: space-around; font-size: 1.4rem; }
@@ -92,14 +94,17 @@
   <div id="map"></div>
 
   <div class="action-bar">
-    <button class="btn-main" id="openCameraBtn">📸 폴라로이드로 내 영역 넓히기</button>
+    <button class="btn-main" id="openCameraBtn">📸 폴라로이드 찰칵!</button>
   </div>
 </div>
 
 <div id="captureOverlay">
   <div class="big-polaroid" id="polaroidCard">
     <div class="masking-tape"></div>
+    <!-- 실시간 카메라 또는 캡처된 이미지가 들어갈 자리 -->
     <video id="liveVideo" autoplay playsinline muted></video>
+    <img id="snapshotImg" style="display:none;" alt="스냅샷">
+    
     <div id="diarySection">
       <div class="sticker-picker">
         <span class="sticker-item selected" onclick="selectSticker(this, '⚔️')">⚔️</span>
@@ -114,7 +119,7 @@
 
   <div class="capture-controls">
     <div id="gpsStatusText" style="color: #fff; font-size: 0.8rem; text-align: center; margin-bottom: 5px;">📍 내 위치 수신 대기 중...</div>
-    <button class="btn-main btn-shoot" id="shootBtn" disabled>🔴 2초 스냅 찍기</button>
+    <button class="btn-main btn-shoot" id="shootBtn" disabled>🔴 찰칵 스냅 찍기</button>
     <button class="btn-main btn-save" id="saveBtn">지도로 쏙! 📌 (영토 선포)</button>
     <button class="btn-main" style="background:transparent; color:#fff; border:none; box-shadow:none;" onclick="closeOverlay()">도망치기</button>
   </div>
@@ -125,7 +130,6 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
   import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBvB51VnKXUnKqdoLvNxFBPJruG9FUzjTU",
@@ -139,13 +143,13 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  const storage = getStorage(app);
 
-  let map, stream, mediaRecorder, currentVideoBlob, currentVideoUrl;
+  let map, stream;
   let myRealLat = 37.5665, myRealLon = 126.9780;
   let selectedEmoji = '⚔️';
   let spots = [];
   let layerGroup = L.layerGroup();
+  let capturedBase64 = null; // 압축된 이미지 문자열
 
   const epicOverlay = document.getElementById('epicOverlay');
   const epicSub = document.getElementById('epicSub');
@@ -154,6 +158,7 @@
   const shootBtn = document.getElementById('shootBtn');
   const gpsStatusText = document.getElementById('gpsStatusText');
   const liveVideo = document.getElementById('liveVideo');
+  const snapshotImg = document.getElementById('snapshotImg');
 
   window.selectSticker = function(el, emoji) {
     document.querySelectorAll('.sticker-item').forEach(i => i.classList.remove('selected'));
@@ -164,7 +169,6 @@
   window.closeOverlay = function() {
     if(stream) stream.getTracks().forEach(track => track.stop());
     document.getElementById('captureOverlay').style.display = 'none';
-    if(currentVideoUrl) { URL.revokeObjectURL(currentVideoUrl); currentVideoUrl = null; }
   };
 
   function initMap(lat, lon) {
@@ -187,7 +191,7 @@
       data.id = firebaseDoc.id;
       const circle = L.circle([data.lat, data.lon], { color: data.color, fillColor: data.color, fillOpacity: 0.4, weight: 2, radius: 45 });
       const marker = L.circleMarker([data.lat, data.lon], { radius: 6, fillColor: '#fff', color: data.color, weight: 3, fillOpacity: 1 });
-      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.videoUrl, data.text, data.sticker), { minWidth: 155 });
+      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.imageUrl, data.text, data.sticker), { minWidth: 155 });
       layerGroup.addLayer(circle);
       layerGroup.addLayer(marker);
       data.marker = marker;
@@ -204,7 +208,7 @@
     epicOverlay.classList.add('epic-animate');
   }
 
-  // 📸 카메라 안전 실행 (블랙스크린 방지)
+  // 📸 카메라 열기
   document.getElementById('openCameraBtn').addEventListener('click', async () => {
     try {
       gpsStatusText.innerText = "📍 GPS 확인 중...";
@@ -216,16 +220,16 @@
         { enableHighAccuracy: true, timeout: 3000 }
       );
 
-      // 모바일 최적화 카메라 스트림 요청
       stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment", width: { ideal: 720 }, height: { ideal: 720 } }, 
-        audio: true 
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 640 } }, 
+        audio: false 
       });
       
       liveVideo.srcObject = stream;
-      await liveVideo.play().catch(e => console.log(e));
+      liveVideo.style.display = 'block';
+      snapshotImg.style.display = 'none';
       
-      gpsStatusText.innerText = "📍 준비 완료! 2초 스냅을 찍어보세요.";
+      gpsStatusText.innerText = "📍 준비 완료! 찰칵 버튼을 누르세요.";
       shootBtn.disabled = false;
 
       document.getElementById('polaroidCard').classList.remove('fly-into-map');
@@ -241,55 +245,32 @@
     }
   });
 
-  // 🔴 2초 녹화 안정화 처리
+  // 🔴 스냅샷 찰칵 캡처 (캔버스 이용)
   shootBtn.addEventListener('click', () => {
-    shootBtn.innerText = "⏳ 찰칵 중...";
-    shootBtn.disabled = true;
-
-    let chunks = [];
-    try {
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-    } catch (err) {
-      try {
-        mediaRecorder = new MediaRecorder(stream); // 기본 코덱 폴백
-      } catch (e) {
-        alert("이 브라우저는 영상 녹화를 지원하지 않습니다.");
-        shootBtn.disabled = false;
-        return;
-      }
-    }
-
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    const canvas = document.createElement('canvas');
+    canvas.width = liveVideo.videoWidth || 400;
+    canvas.height = liveVideo.videoHeight || 400;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(liveVideo, 0, 0, canvas.width, canvas.height);
     
-    mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(track => track.stop());
-      currentVideoBlob = new Blob(chunks, { type: 'video/webm' });
-      currentVideoUrl = URL.createObjectURL(currentVideoBlob);
-      
-      liveVideo.srcObject = null;
-      liveVideo.src = currentVideoUrl;
-      liveVideo.controls = true;
-      liveVideo.loop = true;
-      liveVideo.play();
+    // JPEG로 압축 (용량을 줄여 파이어스토어 1MB 제한 통과)
+    capturedBase64 = canvas.toDataURL('image/jpeg', 0.5);
 
-      shootBtn.style.display = 'none';
-      gpsStatusText.style.display = 'none';
-      saveBtn.style.display = 'block';
-      document.getElementById('diarySection').style.display = 'flex';
-      
-      shootBtn.innerText = "🔴 2초 스냅 찍기";
-      shootBtn.disabled = false;
-    };
+    // 카메라 스트림 끄기
+    stream.getTracks().forEach(track => track.stop());
 
-    mediaRecorder.start();
-    setTimeout(() => {
-      if (mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-      }
-    }, 2000);
+    // UI 전환
+    snapshotImg.src = capturedBase64;
+    liveVideo.style.display = 'none';
+    snapshotImg.style.display = 'block';
+
+    shootBtn.style.display = 'none';
+    gpsStatusText.style.display = 'none';
+    saveBtn.style.display = 'block';
+    document.getElementById('diarySection').style.display = 'flex';
   });
 
-  // ☁️ 깃발 꽂기 (무한 로딩 차단을 위한 5초 타임아웃 안전장치 포함)
+  // ☁️ 파이어스토어에 직접 깃발 꽂기 (스토리지 불필요, 100% 무료)
   saveBtn.addEventListener('click', async () => {
     const text = document.getElementById('diaryInput').value.trim() || "소소한 일상 조각";
     const landName = document.getElementById('landNameInput').value.trim() || "비밀스러운 성역";
@@ -299,22 +280,7 @@
     saveBtn.innerText = "☁️ 깃발 꽂는 중...";
     saveBtn.disabled = true;
 
-    // ⏳ 5초 이상 응답이 없으면 무한 로딩을 강제로 끊어주는 타이머
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("서버 응답 시간이 초과되었습니다. (Storage 규칙 또는 네트워크 확인 필요)")), 5000)
-    );
-
     try {
-      // 업로드 작업을 타임아웃과 경쟁시킴
-      const uploadTask = async () => {
-        const fileName = `mapkku/${Date.now()}.webm`;
-        const storageRef = ref(storage, fileName);
-        await uploadBytes(storageRef, currentVideoBlob);
-        return await getDownloadURL(storageRef);
-      };
-
-      const downloadUrl = await Promise.race([uploadTask(), timeoutPromise]);
-
       let existingSpot = spots.find(s => map.distance([s.lat, s.lon], [myRealLat, myRealLon]) < 50);
 
       const newData = {
@@ -322,7 +288,7 @@
         lon: myRealLon,
         user: userName,
         color: userColor,
-        videoUrl: downloadUrl,
+        imageUrl: capturedBase64, // 압축된 이미지 문자열 저장
         landName: landName,
         text: text,
         sticker: selectedEmoji,
@@ -347,8 +313,6 @@
         saveBtn.innerText = "지도로 쏙! 📌 (영토 선포)";
         saveBtn.disabled = false;
         gpsStatusText.style.display = 'block';
-        liveVideo.controls = false;
-        if(currentVideoUrl) { URL.revokeObjectURL(currentVideoUrl); currentVideoUrl = null; }
         map.flyTo([myRealLat, myRealLon], 18, { duration: 1.5 });
       }, 700);
 
@@ -360,11 +324,11 @@
     }
   });
 
-  function createMiniPolaroid(name, landName, video, text, sticker) {
+  function createMiniPolaroid(name, landName, image, text, sticker) {
     return `
       <div class="map-polaroid">
         <div class="masking-tape"></div>
-        <video src="${video}" autoplay loop muted playsinline></video>
+        <img src="${image}" alt="폴라로이드">
         <div class="map-polaroid-land">🏰 ${landName}</div>
         <div class="map-polaroid-text">${sticker} ${text}</div>
         <div class="map-polaroid-owner">by ${name}</div>
