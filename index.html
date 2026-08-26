@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>우리의 보물지도 일기 🗺️✨</title>
+  <title>우리들의 부루마블 랜드 🗺️👑</title>
   
-  <!-- 구글 폰트 (Jua 둥글둥글체) -->
+  <!-- 구글 폰트 (Jua) -->
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
   
   <!-- Leaflet 지도 스타일 -->
@@ -19,12 +19,16 @@
 
     /* 🎀 상단 헤더 */
     header { background: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #ffccd5; z-index: 1000; box-shadow: 0 4px 12px rgba(255, 182, 193, 0.15); }
-    .logo-area { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; color: #ff6b8b; }
-    .room-badge { background: #ffe3e8; color: #ff477e; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; border: 1px solid #ffb3c1; }
+    .logo-area { display: flex; align-items: center; gap: 6px; font-size: 1.05rem; color: #ff6b8b; }
+    .room-badge { background: #ffe3e8; color: #ff477e; padding: 4px 8px; border-radius: 20px; font-size: 0.7rem; border: 1px solid #ffb3c1; }
     .user-select { background: #fff0f3; color: #d6336c; border: 2px solid #ffb3c1; padding: 6px 10px; border-radius: 14px; font-size: 0.85rem; outline: none; }
 
-    /* 🗺️ 지도 영역 */
+    /* 🗺️ 한국 지도 영역 */
     #map { flex: 1; width: 100%; z-index: 1; }
+
+    /* 👑 점령 알림 토스트 배너 */
+    #conquestToast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-50px); background: #ff477e; color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 0.95rem; box-shadow: 0 6px 20px rgba(255, 71, 126, 0.4); z-index: 3000; transition: 0.3s; opacity: 0; pointer-events: none; text-align: center; white-space: nowrap; }
+    #conquestToast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
     /* 📖 하단 일기 타임라인 */
     .timeline-container { background: #ffffff; padding: 10px 12px; border-top: 2px dashed #ffccd5; display: flex; flex-direction: column; gap: 6px; z-index: 1000; }
@@ -45,16 +49,15 @@
     button#recordBtn:active { transform: scale(0.97); }
     button#recordBtn:disabled { background: #e0e0e0; box-shadow: none; color: #999; }
 
-    /* 💌 감성 그림일기 카드 팝업 모달 */
+    /* 💌 팝업 카드 */
     .leaflet-popup-content-wrapper { background: #fffdf9; color: #4a4a4a; border-radius: 20px; border: 3px solid #ffb3c1; box-shadow: 0 8px 25px rgba(255, 182, 193, 0.4); padding: 5px; }
     .leaflet-popup-tip { background: #fffdf9; }
     .diary-card { display: flex; flex-direction: column; gap: 6px; width: 180px; padding: 4px; }
     .diary-header { display: flex; justify-content: space-between; font-size: 0.75rem; color: #ff6b8b; font-weight: bold; }
     .diary-video { width: 100%; height: 100px; border-radius: 12px; object-fit: cover; border: 2px solid #ffe3e8; }
     .diary-content { background: #fff5f7; padding: 6px 8px; border-radius: 10px; font-size: 0.8rem; text-align: center; border: 1px dashed #ffb3c1; color: #555; }
-    .diary-sticker { font-size: 1rem; text-align: center; }
 
-    /* 일기 작성 모달창 */
+    /* 일기 작성 모달 */
     #diaryModal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
     .modal-content { background: #fffdf9; width: 100%; max-width: 320px; border-radius: 24px; border: 3px solid #ff6b8b; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .modal-content h3 { color: #ff6b8b; font-size: 1.1rem; text-align: center; }
@@ -65,53 +68,51 @@
 </head>
 <body>
 
+<!-- 점령 알림 배너 -->
+<div id="conquestToast">🚩 영토 점령 성공!</div>
+
 <div class="app-container">
-  <!-- 상단 헤더 -->
   <header>
     <div class="logo-area">
-      <span>🐾 우리들의 보물지도</span>
-      <span class="room-badge">#우리방</span>
+      <span>👑 부루마블 랜드</span>
+      <span class="room-badge">#우리동네</span>
     </div>
     <select id="userPicker" class="user-select">
       <option value="채원" data-color="#ff6b8b">🎀 채원 (나)</option>
-      <option value="민서" data-color="#4ecd75">🌱 민서</option>
-      <option value="도윤" data-color="#339af0">⭐ 도윤</option>
+      <option value="민서" data-color="#2b8a3e">🌱 민서</option>
+      <option value="도윤" data-color="#1864ab">⭐ 도윤</option>
     </select>
   </header>
 
-  <!-- 지도 영역 -->
   <div id="map"></div>
 
-  <!-- 타임라인 바 -->
   <div class="timeline-container">
     <div class="timeline-info">
-      <span>오늘의 그림일기 스팟 (<span id="totalClips">0</span>)</span>
+      <span>우리 동네 랜드마크 (<span id="totalClips">0</span>)</span>
       <span>✨ 탭하면 지도 이동</span>
     </div>
     <div class="timeline-track" id="timelineTrack"></div>
   </div>
 
-  <!-- 촬영 컨트롤 -->
   <div class="action-bar">
     <video id="preview" autoplay playsinline muted></video>
-    <button id="recordBtn" disabled>💌 2초 순간 & 일기 남기기</button>
+    <button id="recordBtn" disabled>🏰 이 자리에 깃발 꽂기</button>
   </div>
 </div>
 
-<!-- 일기 작성 팝업 모달 -->
 <div id="diaryModal">
   <div class="modal-content">
-    <h3>📖 오늘의 그림일기 쓰기</h3>
+    <h3>🏰 랜드마크 일기 쓰기</h3>
     <div style="text-align: center; font-size: 0.8rem; color: #888;" id="modalLocationText">📍 위치 확인 중...</div>
     <div class="sticker-picker">
-      <span onclick="selectSticker('🌸')">🌸</span>
+      <span onclick="selectSticker('🏰')">🏰</span>
       <span onclick="selectSticker('⭐')">⭐</span>
-      <span onclick="selectSticker('☕')">☕</span>
       <span onclick="selectSticker('🔥')">🔥</span>
-      <span onclick="selectSticker('🍀')">🍀</span>
+      <span onclick="selectSticker('🍔')">🍔</span>
+      <span onclick="selectSticker('☕')">☕</span>
     </div>
-    <textarea id="diaryInput" placeholder="이 장소에서 있었던 일을 한 줄로 적어보세요! (예: 여기서 엄청 맛있는 커피 마심 ☕)"></textarea>
-    <button class="modal-btn" id="saveDiaryBtn">일기장에 꾹 저장하기 📌</button>
+    <textarea id="diaryInput" placeholder="이 랜드마크를 정복한 소감을 적어보세요!"></textarea>
+    <button class="modal-btn" id="saveDiaryBtn">깃발 고정하고 땅따먹기! 🚩</button>
   </div>
 </div>
 
@@ -119,12 +120,11 @@
 <script>
   let map;
   let mediaStream = null;
-  let spots = [];
-  let currentTempData = null; // 촬영 직후 임시 저장 데이터
-  let selectedEmoji = '🌸';
+  let spots = []; // 등록된 모든 랜드마크 스팟
+  let currentTempData = null;
+  let selectedEmoji = '🏰';
 
-  const userColors = { '채원': '#ff6b8b', '민서': '#4ecd75', '도윤': '#339af0' };
-  const userLines = {};
+  const userColors = { '채원': '#ff6b8b', '민서': '#2b8a3e', '도윤': '#1864ab' };
 
   const recordBtn = document.getElementById('recordBtn');
   const preview = document.getElementById('preview');
@@ -135,14 +135,17 @@
   const diaryInput = document.getElementById('diaryInput');
   const modalLocationText = document.getElementById('modalLocationText');
   const saveDiaryBtn = document.getElementById('saveDiaryBtn');
+  const conquestToast = document.getElementById('conquestToast');
 
   function initMap(lat, lon) {
     map = L.map('map', { zoomControl: false }).setView([lat, lon], 16);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-
-    Object.keys(userColors).forEach(user => {
-      userLines[user] = L.polyline([], { color: userColors[user], weight: 4, opacity: 0.7, dashArray: '5, 8' }).addTo(map);
-    });
+    
+    // 한국어 지명이 완벽히 지원되는 V-World(국토부) 오픈 API 타일 적용
+    L.tileLayer('http://xdworld.vworld.kr:8080/2d/Base/202002/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      minZoom: 6,
+      attribution: '&copy; V-World'
+    }).addTo(map);
   }
 
   async function init() {
@@ -156,14 +159,13 @@
         { enableHighAccuracy: true }
       );
     } catch(e) {
-      alert("카메라 및 위치(GPS) 권한을 허용해주세요!");
+      alert("카메라 및 위치 권한을 허용해주세요!");
     }
   }
 
-  // 1단계: 2초 촬영 시작
   recordBtn.addEventListener('click', () => {
     recordBtn.disabled = true;
-    recordBtn.innerText = "✨ 2초 순간 기록 중...";
+    recordBtn.innerText = "✨ 2초 캡처 중...";
 
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude;
@@ -177,14 +179,12 @@
       
       mediaRecorder.onstop = () => {
         const videoUrl = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
-        
-        // 임시 저장 후 일기 작성 모달 띄우기
         currentTempData = { user: currentUser, lat, lon, time, videoUrl };
         modalLocationText.innerText = `📍 위치 수신 완료 (${time})`;
         diaryModal.style.display = 'flex';
 
         recordBtn.disabled = false;
-        recordBtn.innerText = "💌 2초 순간 & 일기 남기기";
+        recordBtn.innerText = "🏰 이 자리에 깃발 꽂기";
       };
 
       mediaRecorder.start();
@@ -192,57 +192,101 @@
     }, () => {
       alert("GPS 위치를 찾지 못했어요.");
       recordBtn.disabled = false;
-      recordBtn.innerText = "💌 2초 순간 & 일기 남기기";
+      recordBtn.innerText = "🏰 이 자리에 깃발 꽂기";
     }, { enableHighAccuracy: true });
   });
 
-  function selectSticker(emoji) {
-    selectedEmoji = emoji;
-  }
+  function selectSticker(emoji) { selectedEmoji = emoji; }
 
-  // 2단계: 일기 내용 입력 후 지도에 최종 등록
   saveDiaryBtn.addEventListener('click', () => {
-    const text = diaryInput.value.trim() || "오늘의 소중한 순간 🐾";
+    const text = diaryInput.value.trim() || "이 구역의 새로운 랜드마크! 🏰";
     if (!currentTempData) return;
 
-    addRecord(currentTempData.user, currentTempData.lat, currentTempData.lon, currentTempData.time, currentTempData.videoUrl, text, selectedEmoji);
+    processConquestOrNewSpot(currentTempData.user, currentTempData.lat, currentTempData.lon, currentTempData.time, currentTempData.videoUrl, text, selectedEmoji);
     
     diaryInput.value = "";
     diaryModal.style.display = 'none';
   });
 
-  // 지도 마커 및 그림일기 카드 등록
-  function addRecord(user, lat, lon, time, videoUrl, text, sticker) {
+  // 🗺️ 부루마블 땅따먹기 & 점령 판정 로직
+  function processConquestOrNewSpot(user, lat, lon, time, videoUrl, text, sticker) {
     const color = userColors[user];
-    userLines[user].addLatLng([lat, lon]);
+    
+    // 반경 약 30미터 이내에 이미 다른 사람이 꽂은 핀이 있는지 확인 (땅따먹기 판정)
+    let existingSpot = spots.find(spot => {
+      const distance = Math.sqrt(Math.pow(spot.lat - lat, 2) + Math.pow(spot.lon - lon, 2));
+      return distance < 0.0003; // 약 30m 이내
+    });
 
-    const marker = L.circleMarker([lat, lon], {
-      radius: 10,
-      fillColor: color,
-      color: '#ffffff',
-      weight: 3,
-      fillOpacity: 1
-    }).addTo(map);
+    if (existingSpot) {
+      // 🚩 기존 땅 점령(빼앗기) 발생!
+      const oldOwner = existingSpot.user;
+      existingSpot.user = user;
+      existingSpot.videoUrl = videoUrl;
+      existingSpot.text = `[점령당함 뺏김] ${text}`;
+      existingSpot.sticker = sticker;
+      existingSpot.time = time;
+      existingSpot.conquestCount = (existingSpot.conquestCount || 1) + 1;
 
-    const popupHtml = `
-      <div class="diary-card">
-        <div class="diary-header">
-          <span>${sticker} ${user}의 일기</span>
-          <span>${time}</span>
+      // 마커 색상 및 팝업 즉시 업데이트
+      existingSpot.marker.setStyle({ fillColor: color });
+      
+      let crownIcon = existingSpot.conquestCount >= 3 ? '👑 ' : '';
+      existingSpot.marker.bindPopup(`
+        <div class="diary-card">
+          <div class="diary-header">
+            <span>${crownIcon}${sticker} ${user}의 점령지</span>
+            <span>${time}</span>
+          </div>
+          <video class="diary-video" src="${videoUrl}" autoplay loop muted playsinline></video>
+          <div class="diary-content">🔥 ${oldOwner}님의 땅을 빼앗음!<br>${text}</div>
         </div>
-        <video class="diary-video" src="${videoUrl}" autoplay loop muted playsinline></video>
-        <div class="diary-content">${text}</div>
-      </div>
-    `;
-    marker.bindPopup(popupHtml);
+      `);
 
-    const spotData = { id: Date.now(), user, time, lat, lon, videoUrl, text, sticker, marker };
-    spots.push(spotData);
+      map.flyTo([lat, lon], 17);
+      existingSpot.marker.openPopup();
 
-    renderTimelineCard(spotData);
-    map.flyTo([lat, lon], 17);
-    marker.openPopup();
-    totalClips.innerText = spots.length;
+      // 화려한 점령 토스트 배너 띄우기
+      showToast(`🚩 [${user}]님이 [${oldOwner}]님의 랜드마크를 점령했습니다!`);
+
+    } else {
+      // ✨ 새로운 랜드마크 개척
+      const marker = L.circleMarker([lat, lon], {
+        radius: 12,
+        fillColor: color,
+        color: '#ffffff',
+        weight: 3,
+        fillOpacity: 1
+      }).addTo(map);
+
+      const popupHtml = `
+        <div class="diary-card">
+          <div class="diary-header">
+            <span>${sticker} ${user}의 랜드마크</span>
+            <span>${time}</span>
+          </div>
+          <video class="diary-video" src="${videoUrl}" autoplay loop muted playsinline></video>
+          <div class="diary-content">${text}</div>
+        </div>
+      `;
+      marker.bindPopup(popupHtml);
+
+      const spotData = { id: Date.now(), user, time, lat, lon, videoUrl, text, sticker, marker, conquestCount: 1 };
+      spots.push(spotData);
+      renderTimelineCard(spotData);
+
+      map.flyTo([lat, lon], 17);
+      marker.openPopup();
+      totalClips.innerText = spots.length;
+      
+      showToast(`✨ [${user}]님이 새로운 랜드마크를 개척했습니다!`);
+    }
+  }
+
+  function showToast(msg) {
+    conquestToast.innerText = msg;
+    conquestToast.classList.add('show');
+    setTimeout(() => { conquestToast.classList.remove('show'); }, 3000);
   }
 
   function renderTimelineCard(spot) {
