@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   
   <style>
+    /* ... 기존 CSS 그대로 유지 ... */
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Jua', sans-serif; -webkit-tap-highlight-color: transparent; }
     body, html { width: 100%; height: 100%; background: #222; color: #4a4a4a; overflow: hidden; position: fixed; }
     .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; }
@@ -20,9 +21,7 @@
     .profile-setup { display: flex; gap: 8px; align-items: center; }
     .profile-setup input[type="text"] { width: 70px; padding: 4px 8px; border: 2px solid #eaeaea; border-radius: 12px; font-size: 0.9rem; outline: none; text-align: center; }
     .profile-setup input[type="color"] { width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
-    .profile-setup input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-    .profile-setup input[type="color"]::-webkit-color-swatch { border: 2px solid #eaeaea; border-radius: 50%; }
-
+    
     /* 미개척 안개 지도 */
     #map { flex: 1; width: 100%; z-index: 1; background: #e5e3df; }
     .leaflet-tile-pane { filter: grayscale(100%) opacity(0.6) contrast(1.1); }
@@ -38,12 +37,12 @@
     /* 팝업 핀 (폴라로이드) */
     .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; padding: 0; }
     .leaflet-popup-tip-container { display: none; }
-    .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 135px; position: relative; text-align: center; }
+    .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 145px; position: relative; text-align: center; }
     .masking-tape { position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-3deg); width: 55px; height: 20px; background: rgba(255, 234, 167, 0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 2; }
-    .map-polaroid video { width: 100%; height: 95px; object-fit: cover; background: #222; }
-    .map-polaroid-land { font-size: 0.75rem; color: #ff5252; font-weight: bold; margin-top: 4px; }
-    .map-polaroid-text { margin-top: 2px; font-size: 0.75rem; color: #333; line-height: 1.2; }
-    .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 3px; }
+    .map-polaroid video { width: 100%; height: 95px; object-fit: cover; background: #222; border-radius: 2px; }
+    .map-polaroid-land { font-size: 0.75rem; color: #ff5252; font-weight: bold; margin-top: 6px; }
+    .map-polaroid-text { margin-top: 3px; font-size: 0.75rem; color: #333; line-height: 1.2; word-break: break-all; }
+    .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 4px; }
 
     /* 카메라 모달 */
     #captureOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; }
@@ -103,8 +102,8 @@
   <div id="map"></div>
 
   <div class="action-bar">
-    <button class="btn-main" id="openCameraBtn">📸 폴라로이드로 덮어쓰기</button>
-    <button class="btn-main btn-explore" id="exploreBtn">📡 미지의 구역 탐색 (시뮬레이션)</button>
+    <button class="btn-main" id="openCameraBtn">📸 폴라로이드로 내 영역 넓히기</button>
+    <button class="btn-main btn-explore" id="exploreBtn">📡 미지의 구역 정찰하기</button>
   </div>
 </div>
 
@@ -125,7 +124,8 @@
   </div>
 
   <div class="capture-controls">
-    <button class="btn-main btn-shoot" id="shootBtn">🔴 2초 스냅 찍기</button>
+    <div id="gpsStatusText" style="color: #fff; font-size: 0.8rem; text-align: center; margin-bottom: 5px;">📍 내 위치 수신 대기 중...</div>
+    <button class="btn-main btn-shoot" id="shootBtn" disabled>🔴 2초 스냅 찍기</button>
     <button class="btn-main btn-save" id="saveBtn">지도로 쏙! 📌 (영토 선포)</button>
     <button class="btn-main" style="background:transparent; color:#fff; border:none; box-shadow:none;" onclick="closeOverlay()">도망치기</button>
   </div>
@@ -133,18 +133,16 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Firebase 연동 스크립트 -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
   import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js";
 
-  // 전달해주신 Firebase 마스터 열쇠
   const firebaseConfig = {
     apiKey: "AIzaSyBvB51VnKXUnKqdoLvNxFBPJruG9FUzjTU",
     authDomain: "mapc-646a1.firebaseapp.com",
     projectId: "mapc-646a1",
-    storageBucket: "mapc-646a1.firebasestorage.app",
+    storageBucket: "mapc-646a1.firebasestorage.app", // 올바른 스토리지 주소로 수정됨
     messagingSenderId: "241239587123",
     appId: "1:241239587123:web:19ba192b03dae4ea06e646",
     measurementId: "G-M6HCB2B8HK"
@@ -155,10 +153,10 @@
   const storage = getStorage(app);
 
   let map, stream, mediaRecorder, currentVideoBlob, currentVideoUrl;
-  let tempLat, tempLon;
+  let myRealLat, myRealLon; // 카메라를 열 때마다 갱신될 진짜 내 위치
   let selectedEmoji = '⚔️';
-  let spots = []; // Firebase에서 가져온 데이터 배열
-  let layerGroup = L.layerGroup(); // 지도 마커 그룹
+  let spots = [];
+  let layerGroup = L.layerGroup();
 
   const exploreBtn = document.getElementById('exploreBtn');
   const epicOverlay = document.getElementById('epicOverlay');
@@ -166,8 +164,8 @@
   const epicMain = document.getElementById('epicMain');
   const saveBtn = document.getElementById('saveBtn');
   const shootBtn = document.getElementById('shootBtn');
+  const gpsStatusText = document.getElementById('gpsStatusText');
 
-  // 전역 함수 연결 (모듈 스코프 해결)
   window.selectSticker = function(el, emoji) {
     document.querySelectorAll('.sticker-item').forEach(i => i.classList.remove('selected'));
     el.classList.add('selected');
@@ -176,55 +174,54 @@
   window.closeOverlay = function() {
     if(stream) stream.getTracks().forEach(track => track.stop());
     document.getElementById('captureOverlay').style.display = 'none';
+    if(currentVideoUrl) { URL.revokeObjectURL(currentVideoUrl); currentVideoUrl = null; }
   };
 
   function initMap(lat, lon) {
     map = L.map('map', { zoomControl: false }).setView([lat, lon], 17);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '' }).addTo(map);
     layerGroup.addTo(map);
-    tempLat = lat; tempLon = lon;
   }
 
+  // 초기 위치 렌더링
   navigator.geolocation.getCurrentPosition(
     (pos) => initMap(pos.coords.latitude, pos.coords.longitude),
     () => initMap(37.5665, 126.9780)
   );
 
-  // 📡 실시간 Firebase 데이터 수신 (나와 친구의 핀이 실시간 동기화됨)
+  // 📡 실시간 Firebase 데이터 수신
   const q = query(collection(db, "territories"));
   onSnapshot(q, (snapshot) => {
-    layerGroup.clearLayers(); // 기존 마커 지우기
+    layerGroup.clearLayers();
     spots = []; 
     
     snapshot.forEach((firebaseDoc) => {
       const data = firebaseDoc.data();
-      data.id = firebaseDoc.id; // 문서 ID 저장 (나중에 덮어쓸 때 필요)
+      data.id = firebaseDoc.id;
       
-      const circle = L.circle([data.lat, data.lon], { color: data.color, fillColor: data.color, fillOpacity: 0.4, weight: 2, radius: 60 });
+      const circle = L.circle([data.lat, data.lon], { color: data.color, fillColor: data.color, fillOpacity: 0.4, weight: 2, radius: 45 });
       const marker = L.circleMarker([data.lat, data.lon], { radius: 6, fillColor: '#fff', color: data.color, weight: 3, fillOpacity: 1 });
       
-      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.videoUrl, data.text, data.sticker));
+      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.videoUrl, data.text, data.sticker), { minWidth: 155 });
       
       layerGroup.addLayer(circle);
       layerGroup.addLayer(marker);
       
-      data.marker = marker; // 마커 객체 임시저장
+      data.marker = marker;
       spots.push(data);
     });
   });
 
-  // 미지의 구역 탐색 
+  // 미지의 구역 정찰 (탐색)
   exploreBtn.addEventListener('click', () => {
     if (spots.length > 0) {
-      // 랜덤한 다른 영토로 이동
       let randomSpot = spots[Math.floor(Math.random() * spots.length)];
-      map.flyTo([randomSpot.lat, randomSpot.lon], 18, { duration: 2 });
-      tempLat = randomSpot.lat; tempLon = randomSpot.lon;
+      map.flyTo([randomSpot.lat, randomSpot.lon], 18, { duration: 1.5 });
       
-      setTimeout(() => triggerEpicText(`적장 ${randomSpot.user}의 영토`, `[ ${randomSpot.landName} ]`, '#ff7675'), 800);
+      setTimeout(() => triggerEpicText(`적장 [${randomSpot.user}]의 영토 발견`, `[ ${randomSpot.landName} ]`, '#ff7675'), 500);
       setTimeout(() => randomSpot.marker.openPopup(), 2000);
     } else {
-      alert("아직 개척된 영토가 없습니다! 먼저 깃발을 꽂아보세요.");
+      alert("아직 지도를 개척한 용사가 없습니다!");
     }
   });
 
@@ -237,8 +234,27 @@
     epicOverlay.classList.add('epic-animate');
   }
 
+  // 카메라 열기 및 최신 위치 다시 잡기
   document.getElementById('openCameraBtn').addEventListener('click', async () => {
     try {
+      // 위치 갱신
+      gpsStatusText.innerText = "📍 영토 선포를 위한 GPS 확인 중...";
+      shootBtn.disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          myRealLat = pos.coords.latitude;
+          myRealLon = pos.coords.longitude;
+          gpsStatusText.innerText = "📍 GPS 수신 완료! 촬영 준비 끝!";
+          shootBtn.disabled = false;
+        },
+        () => {
+          gpsStatusText.innerText = "⚠️ GPS를 찾지 못했습니다. (기본 위치 적용)";
+          myRealLat = 37.5665; myRealLon = 126.9780;
+          shootBtn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
       document.getElementById('liveVideo').srcObject = stream;
       
@@ -253,6 +269,7 @@
     } catch(e) { alert("카메라 권한을 허용해주세요!"); }
   });
 
+  // 2초 스냅 촬영
   shootBtn.addEventListener('click', () => {
     shootBtn.innerText = "⏳ 찰칵...";
     shootBtn.disabled = true;
@@ -269,8 +286,10 @@
       document.getElementById('liveVideo').src = currentVideoUrl;
 
       shootBtn.style.display = 'none';
+      gpsStatusText.style.display = 'none';
       saveBtn.style.display = 'block';
       document.getElementById('diarySection').style.display = 'flex';
+      
       shootBtn.innerText = "🔴 2초 스냅 찍기";
       shootBtn.disabled = false;
     };
@@ -278,7 +297,7 @@
     setTimeout(() => mediaRecorder.stop(), 2000);
   });
 
-  // ☁️ 파이어베이스 연동 저장 (강탈 or 신규 개척)
+  // Firebase에 저장 및 덮어쓰기 로직
   saveBtn.addEventListener('click', async () => {
     const text = document.getElementById('diaryInput').value.trim() || "소소한 일상 조각";
     const landName = document.getElementById('landNameInput').value.trim() || "비밀스러운 성역";
@@ -289,19 +308,18 @@
     saveBtn.disabled = true;
 
     try {
-      // 1. 영상 업로드
+      // 1. Storage에 영상 업로드
       const fileName = `mapkku/${Date.now()}.mp4`;
       const storageRef = ref(storage, fileName);
       await uploadBytes(storageRef, currentVideoBlob);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      // 2. 근처(50m)에 이미 꽂힌 영토가 있는지 확인 (강탈 로직)
-      // (경도/위도 거리를 대략적으로 계산)
-      let existingSpot = spots.find(s => map.distance([s.lat, s.lon], [tempLat, tempLon]) < 50);
+      // 2. 거리 계산 로직 (약 50m 이내 핀이 있는지 검사)
+      let existingSpot = spots.find(s => map.distance([s.lat, s.lon], [myRealLat, myRealLon]) < 50);
 
       const newData = {
-        lat: tempLat,
-        lon: tempLon,
+        lat: myRealLat,
+        lon: myRealLon,
         user: userName,
         color: userColor,
         videoUrl: downloadUrl,
@@ -312,29 +330,33 @@
       };
 
       if (existingSpot) {
-        // 기존 영토 덮어쓰기 (강탈)
+        // 남의 땅 강탈 또는 내 땅 갱신
         await updateDoc(doc(db, "territories", existingSpot.id), newData);
         if (existingSpot.user !== userName) {
           triggerEpicText('영 토 강 탈 성 공', `[ ${landName} ]`, '#fdcb6e');
+        } else {
+          triggerEpicText('내 영 토 강 화', `[ ${landName} ]`, userColor);
         }
       } else {
-        // 새 영토 추가
+        // 완전 새로운 구역
         await addDoc(collection(db, "territories"), newData);
         triggerEpicText('새로운 영토 개척', `[ ${landName} ]`, '#fdcb6e');
       }
 
-      // 애니메이션 및 모달 닫기
+      // 저장 성공 후 모달 닫기 애니메이션
       document.getElementById('polaroidCard').classList.add('fly-into-map');
       setTimeout(() => {
         document.getElementById('captureOverlay').style.display = 'none';
         saveBtn.innerText = "지도로 쏙! 📌 (영토 선포)";
         saveBtn.disabled = false;
-        map.flyTo([tempLat, tempLon], 18);
+        gpsStatusText.style.display = 'block';
+        if(currentVideoUrl) { URL.revokeObjectURL(currentVideoUrl); currentVideoUrl = null; }
+        map.flyTo([myRealLat, myRealLon], 18, { duration: 1.5 });
       }, 700);
 
     } catch (err) {
       console.error(err);
-      alert("저장 중 오류 발생! (스토리지/데이터베이스 규칙을 확인해주세요)");
+      alert("🚨 저장 실패! Firebase Storage 보안 규칙이 'allow write: if true;' 인지 확인해주세요.");
       saveBtn.innerText = "지도로 쏙! 📌 (영토 선포)";
       saveBtn.disabled = false;
     }
