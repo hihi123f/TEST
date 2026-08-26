@@ -3,79 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>우리들의 부루마블 랜드 🗺️👑</title>
+  <title>우리들의 부루마블 랜드 🎲👑</title>
   
-  <!-- 구글 폰트 (Jua) -->
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  
-  <!-- Leaflet 지도 스타일 -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Jua', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body, html { width: 100%; height: 100%; background: #fff5f7; color: #4a4a4a; overflow: hidden; position: fixed; }
+    body, html { width: 100%; height: 100%; background: #2b1055; color: #fff; overflow: hidden; position: fixed; }
 
-    .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; background: radial-gradient(circle, #3a1c71 0%, #1d093b 100%); }
 
-    /* 🎀 상단 헤더 */
-    header { background: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #ffccd5; z-index: 1000; box-shadow: 0 4px 12px rgba(255, 182, 193, 0.15); }
-    .logo-area { display: flex; align-items: center; gap: 6px; font-size: 1.05rem; color: #ff6b8b; }
-    .room-badge { background: #ffe3e8; color: #ff477e; padding: 4px 8px; border-radius: 20px; font-size: 0.7rem; border: 1px solid #ffb3c1; }
-    .user-select { background: #fff0f3; color: #d6336c; border: 2px solid #ffb3c1; padding: 6px 10px; border-radius: 14px; font-size: 0.85rem; outline: none; }
+    /* 상단 헤더 */
+    header { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.15); z-index: 1000; }
+    .logo-area { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; color: #ffeb3b; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .user-select { background: #fff; color: #3a1c71; border: none; padding: 6px 12px; border-radius: 14px; font-size: 0.85rem; font-weight: bold; outline: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-    /* 🗺️ 한국 지도 영역 */
-    #map { flex: 1; width: 100%; z-index: 1; }
+    /* 부루마블 보드판 메인 영역 */
+    .board-container { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; padding: 12px; position: relative; z-index: 1; }
 
-    /* 👑 점령 알림 토스트 배너 */
-    #conquestToast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-50px); background: #ff477e; color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 0.95rem; box-shadow: 0 6px 20px rgba(255, 71, 126, 0.4); z-index: 3000; transition: 0.3s; opacity: 0; pointer-events: none; text-align: center; white-space: nowrap; }
-    #conquestToast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    /* 중앙 센터 (썰렁함 없애고 꽉 채운 대시보드 형태) */
+    .board-center { grid-column: 2 / 4; grid-row: 2 / 4; background: rgba(255, 255, 255, 0.08); border: 3px dashed rgba(255, 235, 59, 0.5); border-radius: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; box-shadow: inset 0 4px 20px rgba(0,0,0,0.5); gap: 6px; }
+    .board-center h2 { font-size: 1.1rem; color: #ffeb3b; }
+    .board-center .stats { font-size: 0.75rem; color: #ffd54f; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 10px; }
+    .board-center p { font-size: 0.7rem; color: #ccc; line-height: 1.2; }
 
-    /* 📖 하단 일기 타임라인 */
-    .timeline-container { background: #ffffff; padding: 10px 12px; border-top: 2px dashed #ffccd5; display: flex; flex-direction: column; gap: 6px; z-index: 1000; }
-    .timeline-info { display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; padding: 0 2px; }
-    .timeline-track { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scroll-behavior: smooth; }
-    .timeline-track::-webkit-scrollbar { display: none; }
+    /* 보드게임 칸 스타일 */
+    .board-tile { background: #ffffff; color: #333; border-radius: 14px; display: flex; flex-direction: column; justify-content: space-between; padding: 6px; position: relative; border: 3px solid #ffd700; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; overflow: hidden; }
+    .board-tile:active { transform: scale(0.95); }
+    .board-tile.empty { background: rgba(255, 255, 255, 0.12); border: 2px dashed rgba(255, 255, 255, 0.3); color: #aaa; justify-content: center; align-items: center; font-size: 0.7rem; text-align: center; }
+    .board-tile.current-pos { border: 3px solid #ff5252; box-shadow: 0 0 15px #ff5252; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1); }
+    }
     
-    .timeline-card { flex: 0 0 85px; background: #fff0f3; border-radius: 12px; overflow: hidden; cursor: pointer; border: 2px solid #ffb3c1; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-    .timeline-card.active { border-color: #ff477e; transform: scale(0.95); background: #ffe3e8; }
-    .timeline-card video { width: 100%; height: 50px; object-fit: cover; pointer-events: none; }
-    .timeline-card-meta { padding: 4px 6px; font-size: 0.65rem; display: flex; justify-content: space-between; align-items: center; color: #555; }
-    .user-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .tile-header { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: bold; }
+    .tile-owner { padding: 1px 5px; border-radius: 6px; color: #fff; font-size: 0.6rem; }
+    .tile-body { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+    .tile-body video { width: 100%; height: 45px; object-fit: cover; border-radius: 6px; margin-top: 2px; }
+    .tile-footer { font-size: 0.65rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; color: #555; }
 
-    /* 📸 하단 촬영 바 */
-    .action-bar { background: #ffffff; padding: 12px 16px; display: flex; gap: 10px; align-items: center; border-top: 2px solid #ffe3e8; z-index: 1000; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-    video#preview { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #ff6b8b; background: #000; }
-    button#recordBtn { flex: 1; padding: 14px; background: linear-gradient(135deg, #ff6b8b, #ff8fa3); color: #fff; border: none; border-radius: 20px; font-size: 1.05rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 107, 139, 0.3); }
+    /* 하단 촬영 바 */
+    .action-bar { background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px); padding: 12px 16px; display: flex; gap: 10px; align-items: center; border-top: 2px solid rgba(255,255,255,0.1); z-index: 1000; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+    button#recordBtn { width: 100%; padding: 14px; background: linear-gradient(135deg, #ffeb3b, #ff9800); color: #3a1c71; border: none; border-radius: 20px; font-size: 1.05rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4); }
     button#recordBtn:active { transform: scale(0.97); }
-    button#recordBtn:disabled { background: #e0e0e0; box-shadow: none; color: #999; }
 
-    /* 💌 팝업 카드 */
-    .leaflet-popup-content-wrapper { background: #fffdf9; color: #4a4a4a; border-radius: 20px; border: 3px solid #ffb3c1; box-shadow: 0 8px 25px rgba(255, 182, 193, 0.4); padding: 5px; }
-    .leaflet-popup-tip { background: #fffdf9; }
-    .diary-card { display: flex; flex-direction: column; gap: 6px; width: 180px; padding: 4px; }
-    .diary-header { display: flex; justify-content: space-between; font-size: 0.75rem; color: #ff6b8b; font-weight: bold; }
-    .diary-video { width: 100%; height: 100px; border-radius: 12px; object-fit: cover; border: 2px solid #ffe3e8; }
-    .diary-content { background: #fff5f7; padding: 6px 8px; border-radius: 10px; font-size: 0.8rem; text-align: center; border: 1px dashed #ffb3c1; color: #555; }
-
-    /* 일기 작성 모달 */
-    #diaryModal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
-    .modal-content { background: #fffdf9; width: 100%; max-width: 320px; border-radius: 24px; border: 3px solid #ff6b8b; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .modal-content h3 { color: #ff6b8b; font-size: 1.1rem; text-align: center; }
-    .modal-content textarea { width: 100%; height: 70px; border: 2px solid #ffb3c1; border-radius: 12px; padding: 8px; font-size: 0.9rem; resize: none; outline: none; background: #fff5f7; }
+    /* 다이어리 팝업 모달 */
+    #modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
+    .modal-content { background: #fffdf9; color: #4a4a4a; width: 100%; max-width: 320px; border-radius: 24px; border: 4px solid #ff9800; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .modal-content h3 { color: #ff9800; font-size: 1.15rem; text-align: center; }
+    .modal-video-preview { width: 100%; height: 140px; border-radius: 12px; object-fit: cover; background: #000; border: 2px solid #ffe0b2; }
+    .modal-content textarea { width: 100%; height: 60px; border: 2px solid #ffe0b2; border-radius: 12px; padding: 8px; font-size: 0.9rem; resize: none; outline: none; background: #fff8e1; }
     .sticker-picker { display: flex; justify-content: space-around; font-size: 1.4rem; cursor: pointer; }
-    .modal-btn { background: #ff6b8b; color: white; border: none; padding: 10px; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+    .modal-btn { background: #ff9800; color: white; border: none; padding: 10px; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(255, 152, 0, 0.3); }
+
+    /* 토스트 메시지 */
+    #toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-50px); background: #ffeb3b; color: #3a1c71; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0,0,0,0.4); z-index: 3000; transition: 0.3s; opacity: 0; pointer-events: none; white-space: nowrap; }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   </style>
 </head>
 <body>
 
-<!-- 점령 알림 배너 -->
-<div id="conquestToast">🚩 영토 점령 성공!</div>
+<div id="toast">🎲 주사위 굴리는 중!</div>
 
 <div class="app-container">
   <header>
     <div class="logo-area">
-      <span>👑 부루마블 랜드</span>
-      <span class="room-badge">#우리동네</span>
+      <span>🎲 부루마블 랜드</span>
     </div>
     <select id="userPicker" class="user-select">
       <option value="채원" data-color="#ff6b8b">🎀 채원 (나)</option>
@@ -84,234 +80,191 @@
     </select>
   </header>
 
-  <div id="map"></div>
+  <!-- 부루마블 보드판 -->
+  <div class="board-container" id="boardGrid"></div>
 
-  <div class="timeline-container">
-    <div class="timeline-info">
-      <span>우리 동네 랜드마크 (<span id="totalClips">0</span>)</span>
-      <span>✨ 탭하면 지도 이동</span>
-    </div>
-    <div class="timeline-track" id="timelineTrack"></div>
-  </div>
-
+  <!-- 하단 촬영 바 (카메라 미리보기 제거하고 깔끔한 통짜 버튼) -->
   <div class="action-bar">
-    <video id="preview" autoplay playsinline muted></video>
-    <button id="recordBtn" disabled>🏰 이 자리에 깃발 꽂기</button>
+    <button id="recordBtn">🎲 주사위 던지고 2초 점령하기!</button>
   </div>
 </div>
 
-<div id="diaryModal">
-  <div class="modal-content">
-    <h3>🏰 랜드마크 일기 쓰기</h3>
-    <div style="text-align: center; font-size: 0.8rem; color: #888;" id="modalLocationText">📍 위치 확인 중...</div>
-    <div class="sticker-picker">
-      <span onclick="selectSticker('🏰')">🏰</span>
-      <span onclick="selectSticker('⭐')">⭐</span>
-      <span onclick="selectSticker('🔥')">🔥</span>
-      <span onclick="selectSticker('🍔')">🍔</span>
-      <span onclick="selectSticker('☕')">☕</span>
-    </div>
-    <textarea id="diaryInput" placeholder="이 랜드마크를 정복한 소감을 적어보세요!"></textarea>
-    <button class="modal-btn" id="saveDiaryBtn">깃발 고정하고 땅따먹기! 🚩</button>
-  </div>
+<div id="modalOverlay">
+  <div class="modal-content" id="modalContentBody"></div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  let map;
-  let mediaStream = null;
-  let spots = []; // 등록된 모든 랜드마크 스팟
-  let currentTempData = null;
+  let boardTiles = Array(12).fill(null);
+  let selectedTileIndex = 0; // 내 말의 위치
+  let currentVideoUrl = null;
   let selectedEmoji = '🏰';
 
   const userColors = { '채원': '#ff6b8b', '민서': '#2b8a3e', '도윤': '#1864ab' };
-
+  const boardGrid = document.getElementById('boardGrid');
   const recordBtn = document.getElementById('recordBtn');
-  const preview = document.getElementById('preview');
-  const timelineTrack = document.getElementById('timelineTrack');
-  const totalClips = document.getElementById('totalClips');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalContentBody = document.getElementById('modalContentBody');
   const userPicker = document.getElementById('userPicker');
-  const diaryModal = document.getElementById('diaryModal');
-  const diaryInput = document.getElementById('diaryInput');
-  const modalLocationText = document.getElementById('modalLocationText');
-  const saveDiaryBtn = document.getElementById('saveDiaryBtn');
-  const conquestToast = document.getElementById('conquestToast');
+  const toast = document.getElementById('toast');
 
-  function initMap(lat, lon) {
-    map = L.map('map', { zoomControl: false }).setView([lat, lon], 16);
+  const gridPositions = [
+    {r: 1, c: 1}, {r: 1, c: 2}, {r: 1, c: 3}, {r: 1, c: 4},
+    {r: 2, c: 4}, {r: 3, c: 4}, {r: 4, c: 4}, {r: 4, c: 3},
+    {r: 4, c: 2}, {r: 4, c: 1}, {r: 3, c: 1}, {r: 2, c: 1}
+  ];
+
+  function initBoard() {
+    boardGrid.innerHTML = '';
     
-    // 한국어 지명이 완벽히 지원되는 V-World(국토부) 오픈 API 타일 적용
-    L.tileLayer('http://xdworld.vworld.kr:8080/2d/Base/202002/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      minZoom: 6,
-      attribution: '&copy; V-World'
-    }).addTo(map);
+    // 채워진 센터 대시보드
+    const occupiedCount = boardTiles.filter(t => t !== null).length;
+    const centerDiv = document.createElement('div');
+    centerDiv.className = 'board-center';
+    centerDiv.innerHTML = `
+      <h2>🎲 부루마블 랜드</h2>
+      <div class="stats">점령된 영토: ${occupiedCount} / 12칸</div>
+      <p>내 말 위치: <b>#${selectedTileIndex+1}번 칸</b></p>
+    `;
+    boardGrid.appendChild(centerDiv);
+
+    // 12칸 보드 렌더링
+    gridPositions.forEach((pos, index) => {
+      const tileData = boardTiles[index];
+      const tile = document.createElement('div');
+      tile.style.gridRow = pos.r;
+      tile.style.gridColumn = pos.c;
+
+      let tileClass = 'board-tile';
+      if (index === selectedTileIndex) tileClass += ' current-pos'; // 내 말 위치 하이라이트
+
+      if (!tileData) {
+        tile.className = `${tileClass} empty`;
+        tile.innerHTML = `<span>#${index+1}<br>빈땅</span>`;
+      } else {
+        tile.className = tileClass;
+        tile.style.borderColor = userColors[tileData.user];
+        tile.innerHTML = `
+          <div class="tile-header">
+            <span>${tileData.sticker} #${index+1}</span>
+            <span class="tile-owner" style="background:${userColors[tileData.user]}">${tileData.user}</span>
+          </div>
+          <div class="tile-body">
+            <video src="${tileData.videoUrl}" muted playsinline></video>
+          </div>
+          <div class="tile-footer">${tileData.text}</div>
+        `;
+      }
+
+      tile.addEventListener('click', () => {
+        if (tileData) openViewModal(index, tileData);
+        else showToast(`✨ #${index+1}번 빈 땅입니다! 주사위를 던져 이동하세요.`);
+      });
+
+      boardGrid.appendChild(tile);
+    });
   }
 
-  async function init() {
-    try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-      preview.srcObject = mediaStream;
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { initMap(pos.coords.latitude, pos.coords.longitude); recordBtn.disabled = false; },
-        () => { initMap(37.5665, 126.9780); recordBtn.disabled = false; },
-        { enableHighAccuracy: true }
-      );
-    } catch(e) {
-      alert("카메라 및 위치 권한을 허용해주세요!");
-    }
-  }
-
-  recordBtn.addEventListener('click', () => {
+  // 🎲 주사위 던지기 & 점령 버튼 (클릭 순간에만 카메라 활성화)
+  recordBtn.addEventListener('click', async () => {
     recordBtn.disabled = true;
-    recordBtn.innerText = "✨ 2초 캡처 중...";
+    recordBtn.innerText = "🎲 주사위 굴리는 중...";
 
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const currentUser = userPicker.value;
+    // 1~3칸 이동
+    const diceRoll = Math.floor(Math.random() * 3) + 1;
+    selectedTileIndex = (selectedTileIndex + diceRoll) % 12;
+    initBoard();
 
-      const mediaRecorder = new MediaRecorder(mediaStream);
+    showToast(`🎲 주사위 눈 [${diceRoll}]! #${selectedTileIndex+1}번 칸으로 이동!`);
+
+    try {
+      // 💡 핵심 개선: 녹화할 때만 카메라를 켜서 불필요한 배터리 소모 및 인디케이터(초록불) 방지
+      recordBtn.innerText = "📸 카메라 켜는 중...";
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+      
+      recordBtn.innerText = "✨ 2초 순간 기록 중!";
+      const mediaRecorder = new MediaRecorder(stream);
       const chunks = [];
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
       
       mediaRecorder.onstop = () => {
-        const videoUrl = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
-        currentTempData = { user: currentUser, lat, lon, time, videoUrl };
-        modalLocationText.innerText = `📍 위치 수신 완료 (${time})`;
-        diaryModal.style.display = 'flex';
+        // 녹화 끝나자마자 카메라 하드웨어 즉시 종료 (초록불 꺼짐)
+        stream.getTracks().forEach(track => track.stop());
 
+        currentVideoUrl = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
+        openRecordModal(selectedTileIndex);
+        
         recordBtn.disabled = false;
-        recordBtn.innerText = "🏰 이 자리에 깃발 꽂기";
+        recordBtn.innerText = "🎲 주사위 던지고 2초 점령하기!";
       };
 
       mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 2000);
-    }, () => {
-      alert("GPS 위치를 찾지 못했어요.");
+      setTimeout(() => mediaRecorder.stop(), 2000); // 정확히 2초
+
+    } catch(e) {
+      alert("카메라 및 마이크 권한을 허용해야 랜드마크를 점령할 수 있어요!");
       recordBtn.disabled = false;
-      recordBtn.innerText = "🏰 이 자리에 깃발 꽂기";
-    }, { enableHighAccuracy: true });
+      recordBtn.innerText = "🎲 주사위 던지고 2초 점령하기!";
+    }
   });
 
-  function selectSticker(emoji) { selectedEmoji = emoji; }
+  function openRecordModal(tileIdx) {
+    const existing = boardTiles[tileIdx];
+    const actionText = existing ? `🔥 [${existing.user}] 땅 뺏고 점령하기!` : `🏰 새로운 랜드마크 등록!`;
 
-  saveDiaryBtn.addEventListener('click', () => {
-    const text = diaryInput.value.trim() || "이 구역의 새로운 랜드마크! 🏰";
-    if (!currentTempData) return;
+    modalContentBody.innerHTML = `
+      <h3>🎲 #${tileIdx+1}번 칸 점령!</h3>
+      <video class="modal-video-preview" src="${currentVideoUrl}" autoplay loop muted playsinline></video>
+      <div class="sticker-picker">
+        <span onclick="setEmoji('🏰')">🏰</span>
+        <span onclick="setEmoji('⭐')">⭐</span>
+        <span onclick="setEmoji('🔥')">🔥</span>
+        <span onclick="setEmoji('☕')">☕</span>
+        <span onclick="setEmoji('🍔')">🍔</span>
+      </div>
+      <textarea id="tileDiaryText" placeholder="이 칸에 남길 한 줄 소감을 적어보세요!"></textarea>
+      <button class="modal-btn" onclick="saveTileData(${tileIdx})">${actionText}</button>
+    `;
+    modalOverlay.style.display = 'flex';
+  }
 
-    processConquestOrNewSpot(currentTempData.user, currentTempData.lat, currentTempData.lon, currentTempData.time, currentTempData.videoUrl, text, selectedEmoji);
-    
-    diaryInput.value = "";
-    diaryModal.style.display = 'none';
-  });
+  function setEmoji(emoji) { selectedEmoji = emoji; }
 
-  // 🗺️ 부루마블 땅따먹기 & 점령 판정 로직
-  function processConquestOrNewSpot(user, lat, lon, time, videoUrl, text, sticker) {
-    const color = userColors[user];
-    
-    // 반경 약 30미터 이내에 이미 다른 사람이 꽂은 핀이 있는지 확인 (땅따먹기 판정)
-    let existingSpot = spots.find(spot => {
-      const distance = Math.sqrt(Math.pow(spot.lat - lat, 2) + Math.pow(spot.lon - lon, 2));
-      return distance < 0.0003; // 약 30m 이내
-    });
+  function saveTileData(tileIdx) {
+    const text = document.getElementById('tileDiaryText').value.trim() || "부루마블 정복 완료! 🎲";
+    const currentUser = userPicker.value;
+    const prevOwner = boardTiles[tileIdx] ? boardTiles[tileIdx].user : null;
 
-    if (existingSpot) {
-      // 🚩 기존 땅 점령(빼앗기) 발생!
-      const oldOwner = existingSpot.user;
-      existingSpot.user = user;
-      existingSpot.videoUrl = videoUrl;
-      existingSpot.text = `[점령당함 뺏김] ${text}`;
-      existingSpot.sticker = sticker;
-      existingSpot.time = time;
-      existingSpot.conquestCount = (existingSpot.conquestCount || 1) + 1;
+    boardTiles[tileIdx] = { user: currentUser, videoUrl: currentVideoUrl, text, sticker: selectedEmoji };
+    modalOverlay.style.display = 'none';
+    initBoard();
 
-      // 마커 색상 및 팝업 즉시 업데이트
-      existingSpot.marker.setStyle({ fillColor: color });
-      
-      let crownIcon = existingSpot.conquestCount >= 3 ? '👑 ' : '';
-      existingSpot.marker.bindPopup(`
-        <div class="diary-card">
-          <div class="diary-header">
-            <span>${crownIcon}${sticker} ${user}의 점령지</span>
-            <span>${time}</span>
-          </div>
-          <video class="diary-video" src="${videoUrl}" autoplay loop muted playsinline></video>
-          <div class="diary-content">🔥 ${oldOwner}님의 땅을 빼앗음!<br>${text}</div>
-        </div>
-      `);
-
-      map.flyTo([lat, lon], 17);
-      existingSpot.marker.openPopup();
-
-      // 화려한 점령 토스트 배너 띄우기
-      showToast(`🚩 [${user}]님이 [${oldOwner}]님의 랜드마크를 점령했습니다!`);
-
+    if (prevOwner && prevOwner !== currentUser) {
+      showToast(`🚩 [${currentUser}]님이 [${prevOwner}]님의 영토를 빼앗았습니다!`);
     } else {
-      // ✨ 새로운 랜드마크 개척
-      const marker = L.circleMarker([lat, lon], {
-        radius: 12,
-        fillColor: color,
-        color: '#ffffff',
-        weight: 3,
-        fillOpacity: 1
-      }).addTo(map);
-
-      const popupHtml = `
-        <div class="diary-card">
-          <div class="diary-header">
-            <span>${sticker} ${user}의 랜드마크</span>
-            <span>${time}</span>
-          </div>
-          <video class="diary-video" src="${videoUrl}" autoplay loop muted playsinline></video>
-          <div class="diary-content">${text}</div>
-        </div>
-      `;
-      marker.bindPopup(popupHtml);
-
-      const spotData = { id: Date.now(), user, time, lat, lon, videoUrl, text, sticker, marker, conquestCount: 1 };
-      spots.push(spotData);
-      renderTimelineCard(spotData);
-
-      map.flyTo([lat, lon], 17);
-      marker.openPopup();
-      totalClips.innerText = spots.length;
-      
-      showToast(`✨ [${user}]님이 새로운 랜드마크를 개척했습니다!`);
+      showToast(`✨ #${tileIdx+1}번 칸 영토 획득 성공!`);
     }
   }
 
-  function showToast(msg) {
-    conquestToast.innerText = msg;
-    conquestToast.classList.add('show');
-    setTimeout(() => { conquestToast.classList.remove('show'); }, 3000);
-  }
-
-  function renderTimelineCard(spot) {
-    const card = document.createElement('div');
-    card.className = 'timeline-card';
-    card.innerHTML = `
-      <video src="${spot.videoUrl}" muted playsinline></video>
-      <div class="timeline-card-meta">
-        <span><span class="user-dot" style="background:${userColors[spot.user]}"></span>${spot.user}</span>
-        <span>${spot.sticker}</span>
-      </div>
+  function openViewModal(tileIdx, data) {
+    modalContentBody.innerHTML = `
+      <h3>${data.sticker} #${tileIdx+1}번 랜드마크</h3>
+      <div style="font-size:0.8rem; color:#ff9800; text-align:center; font-weight:bold;">소유주: ${data.user}</div>
+      <video class="modal-video-preview" src="${data.videoUrl}" autoplay loop muted playsinline></video>
+      <div style="background:#fff8e1; padding:10px; border-radius:10px; text-align:center; font-size:0.9rem; border:1px dashed #ff9800;">${data.text}</div>
+      <button class="modal-btn" onclick="closeModal()">닫기</button>
     `;
-
-    card.addEventListener('click', () => {
-      document.querySelectorAll('.timeline-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      map.flyTo([spot.lat, spot.lon], 17);
-      spot.marker.openPopup();
-    });
-
-    timelineTrack.appendChild(card);
-    timelineTrack.scrollLeft = timelineTrack.scrollWidth;
+    modalOverlay.style.display = 'flex';
   }
 
-  init();
+  function closeModal() { modalOverlay.style.display = 'none'; }
+
+  function showToast(msg) {
+    toast.innerText = msg;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+  }
+
+  initBoard();
 </script>
 </body>
 </html>
