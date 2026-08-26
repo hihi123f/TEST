@@ -3,351 +3,289 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>맵꾸(Map-kku) - 영토 전쟁 🎨⚔️</title>
-  
+  <title>우리들의 부루마블 랜드 🎲👑</title>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   
-  <!-- Firebase SDK (v9 호환 모드) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
   <style>
+    /* 이전과 동일한 아기자기한 보드판 디자인 */
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Jua', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body, html { width: 100%; height: 100%; background: #222; color: #4a4a4a; overflow: hidden; position: fixed; }
-    .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    body, html { width: 100%; height: 100%; background: #2b1055; color: #fff; overflow: hidden; position: fixed; }
+    .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; background: radial-gradient(circle, #3a1c71 0%, #1d093b 100%); }
 
-    header { background: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .logo-area { font-size: 1.1rem; color: #7f8fa6; }
-    .profile-setup { display: flex; gap: 8px; align-items: center; }
-    .profile-setup input[type="text"] { width: 70px; padding: 4px 8px; border: 2px solid #eaeaea; border-radius: 12px; font-size: 0.9rem; outline: none; text-align: center; }
-    .profile-setup input[type="color"] { width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
-    .profile-setup input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-    .profile-setup input[type="color"]::-webkit-color-swatch { border: 2px solid #eaeaea; border-radius: 50%; }
+    header { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.15); z-index: 1000; }
+    .logo-area { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; color: #ffeb3b; }
+    .user-select { background: #fff; color: #3a1c71; border: none; padding: 6px 12px; border-radius: 14px; font-size: 0.85rem; font-weight: bold; outline: none; }
 
-    #map { flex: 1; width: 100%; z-index: 1; background: #e5e3df; }
-    .leaflet-tile-pane { filter: grayscale(100%) opacity(0.6) contrast(1.1); }
-    .leaflet-overlay-pane { filter: none; }
+    .board-container { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; padding: 12px; position: relative; z-index: 1; }
+    .board-center { grid-column: 2 / 4; grid-row: 2 / 4; background: rgba(255, 255, 255, 0.08); border: 3px dashed rgba(255, 235, 59, 0.5); border-radius: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; gap: 6px; }
+    .board-center h2 { font-size: 1.1rem; color: #ffeb3b; }
+    .board-center .stats { font-size: 0.75rem; color: #ffd54f; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 10px; }
 
-    .action-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; width: 85%; max-width: 320px; }
-    .btn-main { width: 100%; padding: 15px; background: #fff; color: #4a4a4a; border: 2px solid #eaeaea; border-radius: 30px; font-size: 1.05rem; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.1); transition: 0.2s; font-weight: bold; }
-    .btn-main:active { transform: scale(0.96); }
+    .board-tile { background: #ffffff; color: #333; border-radius: 14px; display: flex; flex-direction: column; justify-content: space-between; padding: 6px; border: 3px solid #ffd700; cursor: pointer; transition: 0.2s; overflow: hidden; }
+    .board-tile:active { transform: scale(0.95); }
+    .board-tile.empty { background: rgba(255, 255, 255, 0.12); border: 2px dashed rgba(255, 255, 255, 0.3); color: #aaa; justify-content: center; align-items: center; text-align: center; }
+    .board-tile.current-pos { border: 3px solid #ff5252; box-shadow: 0 0 15px #ff5252; animation: pulse 1s infinite; }
 
-    .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; padding: 0; }
-    .leaflet-popup-tip-container { display: none; }
-    .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 135px; position: relative; text-align: center; }
-    .masking-tape { position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-3deg); width: 55px; height: 20px; background: rgba(255, 234, 167, 0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 2; }
-    .map-polaroid video { width: 100%; height: 95px; object-fit: cover; background: #222; }
-    .map-polaroid-land { font-size: 0.75rem; color: #ff5252; font-weight: bold; margin-top: 4px; }
-    .map-polaroid-text { margin-top: 2px; font-size: 0.75rem; color: #333; line-height: 1.2; }
-    .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 3px; }
-
-    #captureOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; }
-    .big-polaroid { background: #fff; padding: 12px 12px 24px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
-    .big-polaroid video { width: 100%; height: 230px; object-fit: cover; background: #222; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
     
-    #diarySection { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
-    .sticker-picker { display: flex; justify-content: space-around; font-size: 1.4rem; }
-    .sticker-item { transition: 0.2s; cursor: pointer; }
-    .sticker-item.selected { transform: scale(1.3); }
-    
-    .input-field { width: 100%; border: none; background: #fdfbf7; border-radius: 8px; padding: 8px; font-size: 0.85rem; text-align: center; outline: none; }
-    .input-land { border: 1px dashed #ffb8b8; font-weight: bold; color: #d63031; }
+    .tile-header { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: bold; }
+    .tile-owner { padding: 1px 5px; border-radius: 6px; color: #fff; font-size: 0.6rem; }
+    .tile-body { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+    .tile-body video { width: 100%; height: 45px; object-fit: cover; border-radius: 6px; margin-top: 2px; }
+    .tile-footer { font-size: 0.65rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; color: #555; }
 
-    .capture-controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; width: 280px; }
-    .btn-shoot { background: #ff5252; color: #fff; }
-    .btn-save { background: #ffeaa7; color: #d63031; display: none; }
-    
-    .fly-into-map { animation: suckIntoMap 0.8s cubic-bezier(0.5, -0.5, 0.2, 1.5) forwards; }
-    @keyframes suckIntoMap {
-      0% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
-      50% { transform: scale(0.5) translateY(100px) rotate(10deg); opacity: 0.8; }
-      100% { transform: scale(0) translateY(300px) rotate(-15deg); opacity: 0; }
-    }
+    .action-bar { background: rgba(0, 0, 0, 0.3); padding: 12px 16px; display: flex; align-items: center; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+    button#recordBtn { width: 100%; padding: 14px; background: linear-gradient(135deg, #ffeb3b, #ff9800); color: #3a1c71; border: none; border-radius: 20px; font-size: 1.05rem; font-weight: bold; cursor: pointer; }
+    button#recordBtn:disabled { background: #888; color: #ccc; cursor: not-allowed; }
 
-    #epicOverlay { position: fixed; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, transparent 80%); z-index: 5000; display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; opacity: 0; text-align: center; padding: 0 20px; }
-    .epic-sub { font-family: 'Noto Serif KR', serif; color: #ff7675; font-size: 0.9rem; letter-spacing: 0.25rem; margin-bottom: 8px; text-shadow: 0 0 8px rgba(255, 118, 117, 0.8); }
-    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 1.85rem; letter-spacing: 0.35rem; text-shadow: 0 0 12px rgba(255, 255, 255, 0.8); line-height: 1.3; }
-    
-    .epic-animate { display: flex !important; animation: epicFade 3.2s forwards; }
-    @keyframes epicFade {
-      0% { opacity: 0; transform: scale(0.92); }
-      15% { opacity: 1; transform: scale(1); }
-      85% { opacity: 1; transform: scale(1.03); }
-      100% { opacity: 0; transform: scale(1.08); }
-    }
+    #modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
+    .modal-content { background: #fffdf9; color: #4a4a4a; width: 100%; max-width: 320px; border-radius: 24px; border: 4px solid #ff9800; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .modal-content h3 { color: #ff9800; font-size: 1.15rem; text-align: center; }
+    .modal-video-preview { width: 100%; height: 140px; border-radius: 12px; object-fit: cover; background: #000; }
+    .modal-content textarea { width: 100%; height: 60px; border: 2px solid #ffe0b2; border-radius: 12px; padding: 8px; font-size: 0.9rem; resize: none; outline: none; background: #fff8e1; }
+    .sticker-picker { display: flex; justify-content: space-around; font-size: 1.4rem; cursor: pointer; }
+    .modal-btn { background: #ff9800; color: white; border: none; padding: 10px; border-radius: 14px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+
+    #toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-50px); background: #ffeb3b; color: #3a1c71; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; font-weight: bold; z-index: 3000; transition: 0.3s; opacity: 0; white-space: nowrap; }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   </style>
 </head>
 <body>
 
-<div id="epicOverlay">
-  <div class="epic-sub" id="epicSub">적장의 영토 진입</div>
-  <div class="epic-main" id="epicMain">[ 성 동 구 ]</div>
-</div>
+<div id="toast">알림</div>
 
 <div class="app-container">
   <header>
-    <div class="logo-area">🎨 맵꾸</div>
-    <div class="profile-setup">
-      <input type="text" id="userName" value="용사" placeholder="이름">
-      <input type="color" id="userColor" value="#ffb8b8">
-    </div>
+    <div class="logo-area">🎲 부루마블 랜드</div>
+    <select id="userPicker" class="user-select">
+      <option value="채원" data-color="#ff6b8b">🎀 채원</option>
+      <option value="민서" data-color="#2b8a3e">🌱 민서</option>
+      <option value="도윤" data-color="#1864ab">⭐ 도윤</option>
+    </select>
   </header>
 
-  <div id="map"></div>
+  <div class="board-container" id="boardGrid"></div>
 
   <div class="action-bar">
-    <button class="btn-main" id="openCameraBtn">📸 폴라로이드로 덮어쓰기</button>
+    <button id="recordBtn">🎲 주사위 던지고 2초 점령하기!</button>
   </div>
 </div>
 
-<div id="captureOverlay">
-  <div class="big-polaroid" id="polaroidCard">
-    <div class="masking-tape"></div>
-    <video id="liveVideo" autoplay playsinline muted></video>
-    <div id="diarySection">
-      <div class="sticker-picker">
-        <span class="sticker-item selected" onclick="selectSticker(this, '⚔️')">⚔️</span>
-        <span class="sticker-item" onclick="selectSticker(this, '👑')">👑</span>
-        <span class="sticker-item" onclick="selectSticker(this, '🔥')">🔥</span>
-        <span class="sticker-item" onclick="selectSticker(this, '☕')">☕</span>
-      </div>
-      <input type="text" class="input-field input-land" id="landNameInput" placeholder="🏰 영지 이름" autocomplete="off">
-      <input type="text" class="input-field" id="diaryInput" placeholder="정복의 한마디 ✍️" autocomplete="off">
-    </div>
-  </div>
-
-  <div class="capture-controls">
-    <button class="btn-main btn-shoot" id="shootBtn">🔴 2초 스냅 찍기</button>
-    <button class="btn-main btn-save" id="saveBtn">지도로 쏙! 📌 (서버 업로드)</button>
-    <button class="btn-main" style="background:transparent; color:#fff; border:none; box-shadow:none;" onclick="closeOverlay()">취소</button>
-  </div>
+<div id="modalOverlay">
+  <div class="modal-content" id="modalContentBody"></div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  // -------------------------------------------------------------
-  // [1] Firebase 초기화 (본인 Firebase 콘솔 키값으로 교체)
-  // -------------------------------------------------------------
+<!-- Firebase v9 SDK (ES Modules 방식) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js";
+
+  // 전달해주신 마스터 열쇠 적용!
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBvB51VnKXUnKqdoLvNxFBPJruG9FUzjTU",
+    authDomain: "mapc-646a1.firebaseapp.com",
+    projectId: "mapc-646a1",
+    storageBucket: "mapc-646a1.firebasestorage.app",
+    messagingSenderId: "241239587123",
+    appId: "1:241239587123:web:19ba192b03dae4ea06e646",
+    measurementId: "G-M6HCB2B8HK"
   };
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const storage = firebase.storage();
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
 
-  // -------------------------------------------------------------
-  // [2] 지도 및 상태 초기화
-  // -------------------------------------------------------------
-  let map, stream, mediaRecorder, currentBlob, currentVideoUrl;
-  let tempLat, tempLon;
-  let selectedEmoji = '⚔️';
-  let spotMap = {}; // Firestore 문서 ID 기준 마커 캐시
+  let boardTiles = Array(12).fill(null);
+  let selectedTileIndex = 0;
+  let currentVideoBlob = null;
+  let selectedEmoji = '🏰';
 
-  function initMap(lat, lon) {
-    map = L.map('map', { zoomControl: false }).setView([lat, lon], 17);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '' }).addTo(map);
-    tempLat = lat; tempLon = lon;
+  const userColors = { '채원': '#ff6b8b', '민서': '#2b8a3e', '도윤': '#1864ab' };
+  const boardGrid = document.getElementById('boardGrid');
+  const recordBtn = document.getElementById('recordBtn');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalContentBody = document.getElementById('modalContentBody');
+  const userPicker = document.getElementById('userPicker');
+  const toast = document.getElementById('toast');
 
-    // 실시간 DB 리스너 연결
-    listenToSpots();
-  }
+  const gridPositions = [
+    {r: 1, c: 1}, {r: 1, c: 2}, {r: 1, c: 3}, {r: 1, c: 4},
+    {r: 2, c: 4}, {r: 3, c: 4}, {r: 4, c: 4}, {r: 4, c: 3},
+    {r: 4, c: 2}, {r: 4, c: 1}, {r: 3, c: 1}, {r: 2, c: 1}
+  ];
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => initMap(pos.coords.latitude, pos.coords.longitude),
-    () => initMap(37.5665, 126.9780)
-  );
-
-  // -------------------------------------------------------------
-  // [3] Firebase Firestore 실시간 구독 (친구들이 올린 핀 자동 렌더링)
-  // -------------------------------------------------------------
-  function listenToSpots() {
-    db.collection("spots").onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        const id = change.doc.id;
-        const data = change.doc.data();
-
-        if (change.type === "added" || change.type === "modified") {
-          renderOrUpdateSpot(id, data);
-        }
-      });
+  // 1. 실시간 데이터베이스 구독 (누군가 땅을 점령하면 내 화면도 0.1초만에 갱신됨)
+  const q = query(collection(db, "spots"), orderBy("timestamp", "asc"));
+  onSnapshot(q, (snapshot) => {
+    boardTiles = Array(12).fill(null); // 배열 초기화
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      boardTiles[data.tileIdx] = data; // 최신 점령자 데이터로 덮어쓰기
     });
-  }
-
-  function renderOrUpdateSpot(id, data) {
-    if (spotMap[id]) {
-      // 기존 핀 업데이트 (영토 점령/덮어쓰기)
-      spotMap[id].circle.setStyle({ fillColor: data.color, color: data.color });
-      spotMap[id].marker.setStyle({ color: data.color });
-      spotMap[id].marker.setPopupContent(createMiniPolaroid(data.user, data.landName, data.videoUrl, data.text, data.sticker));
-    } else {
-      // 신규 핀 추가
-      const circle = L.circle([data.lat, data.lon], { color: data.color, fillColor: data.color, fillOpacity: 0.4, weight: 2, radius: 40 }).addTo(map);
-      const marker = L.circleMarker([data.lat, data.lon], { radius: 6, fillColor: '#fff', color: data.color, weight: 3, fillOpacity: 1 }).addTo(map);
-      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.videoUrl, data.text, data.sticker));
-
-      spotMap[id] = { circle, marker, ...data };
-    }
-  }
-
-  function triggerEpicText(sub, main, color) {
-    const epicOverlay = document.getElementById('epicOverlay');
-    document.getElementById('epicSub').innerText = sub;
-    document.getElementById('epicSub').style.color = color;
-    document.getElementById('epicMain').innerText = main;
-    
-    epicOverlay.classList.remove('epic-animate');
-    void epicOverlay.offsetWidth;
-    epicOverlay.classList.add('epic-animate');
-  }
-
-  // -------------------------------------------------------------
-  // [4] 카메라 녹화 및 다꾸
-  // -------------------------------------------------------------
-  document.getElementById('openCameraBtn').addEventListener('click', async () => {
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      tempLat = pos.coords.latitude;
-      tempLon = pos.coords.longitude;
-      map.flyTo([tempLat, tempLon], 18);
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-        document.getElementById('liveVideo').srcObject = stream;
-        
-        document.getElementById('polaroidCard').classList.remove('fly-into-map');
-        document.getElementById('diarySection').style.display = 'none';
-        document.getElementById('saveBtn').style.display = 'none';
-        document.getElementById('shootBtn').style.display = 'block';
-        document.getElementById('diaryInput').value = '';
-        document.getElementById('landNameInput').value = '';
-        
-        document.getElementById('captureOverlay').style.display = 'flex';
-      } catch(e) { alert("카메라 권한을 허용해주세요!"); }
-    });
+    renderBoard();
   });
 
-  document.getElementById('shootBtn').addEventListener('click', () => {
-    const shootBtn = document.getElementById('shootBtn');
-    shootBtn.innerText = "⏳ 찰칵...";
-    shootBtn.disabled = true;
+  function renderBoard() {
+    boardGrid.innerHTML = '';
+    const occupiedCount = boardTiles.filter(t => t !== null).length;
+    const centerDiv = document.createElement('div');
+    centerDiv.className = 'board-center';
+    centerDiv.innerHTML = `
+      <h2>🎲 부루마블 랜드</h2>
+      <div class="stats">점령된 영토: ${occupiedCount} / 12칸</div>
+      <p>내 말 위치: <b>#${selectedTileIndex+1}번 칸</b></p>
+    `;
+    boardGrid.appendChild(centerDiv);
 
-    mediaRecorder = new MediaRecorder(stream);
-    const chunks = [];
-    mediaRecorder.ondataavailable = e => chunks.push(e.data);
-    
-    mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(track => track.stop());
-      document.getElementById('liveVideo').srcObject = null;
-      
-      currentBlob = new Blob(chunks, { type: 'video/mp4' });
-      currentVideoUrl = URL.createObjectURL(currentBlob);
-      document.getElementById('liveVideo').src = currentVideoUrl;
+    gridPositions.forEach((pos, index) => {
+      const tileData = boardTiles[index];
+      const tile = document.createElement('div');
+      tile.style.gridRow = pos.r;
+      tile.style.gridColumn = pos.c;
 
-      shootBtn.style.display = 'none';
-      document.getElementById('saveBtn').style.display = 'block';
-      document.getElementById('diarySection').style.display = 'flex';
-      shootBtn.innerText = "🔴 2초 스냅 찍기";
-      shootBtn.disabled = false;
-    };
-    mediaRecorder.start();
-    setTimeout(() => mediaRecorder.stop(), 2000);
-  });
+      let tileClass = 'board-tile';
+      if (index === selectedTileIndex) tileClass += ' current-pos';
 
-  function selectSticker(el, emoji) {
-    document.querySelectorAll('.sticker-item').forEach(i => i.classList.remove('selected'));
-    el.classList.add('selected');
-    selectedEmoji = emoji;
-  }
-
-  // -------------------------------------------------------------
-  // [5] Firebase 업로드 & Firestore 저장
-  // -------------------------------------------------------------
-  document.getElementById('saveBtn').addEventListener('click', async () => {
-    const saveBtn = document.getElementById('saveBtn');
-    saveBtn.disabled = true;
-    saveBtn.innerText = "☁️ 업로드 중...";
-
-    const text = document.getElementById('diaryInput').value.trim() || "소소한 일상 조각";
-    const landName = document.getElementById('landNameInput').value.trim() || "비밀스러운 성역";
-    const userName = document.getElementById('userName').value || "용사";
-    const userColor = document.getElementById('userColor').value;
-
-    try {
-      // 1) Storage에 비디오 업로드
-      const filename = `videos/${Date.now()}_${userName}.mp4`;
-      const storageRef = storage.ref().child(filename);
-      const uploadTask = await storageRef.put(currentBlob);
-      const downloadUrl = await uploadTask.ref.getDownloadURL();
-
-      // 2) 50m 이내 기존 영토 확인 (점령 여부 판정)
-      let targetDocId = null;
-      Object.keys(spotMap).forEach(id => {
-        const spot = spotMap[id];
-        if (map.distance([spot.lat, spot.lon], [tempLat, tempLon]) < 50) {
-          targetDocId = id;
-        }
-      });
-
-      const spotData = {
-        user: userName,
-        color: userColor,
-        lat: tempLat,
-        lon: tempLon,
-        landName: landName,
-        text: text,
-        sticker: selectedEmoji,
-        videoUrl: downloadUrl,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      if (targetDocId) {
-        await db.collection("spots").doc(targetDocId).update(spotData);
-        triggerEpicText('영 토 강 탈 성 공', `[ ${landName} ]`, '#fdcb6e');
+      if (!tileData) {
+        tile.className = `${tileClass} empty`;
+        tile.innerHTML = `<span>#${index+1}<br>빈땅</span>`;
       } else {
-        await db.collection("spots").add(spotData);
-        triggerEpicText('새로운 영토 개척', `[ ${landName} ]`, '#fdcb6e');
+        tile.className = tileClass;
+        tile.style.borderColor = userColors[tileData.user] || '#ffd700';
+        tile.innerHTML = `
+          <div class="tile-header">
+            <span>${tileData.sticker} #${index+1}</span>
+            <span class="tile-owner" style="background:${userColors[tileData.user]||'#333'}">${tileData.user}</span>
+          </div>
+          <div class="tile-body">
+            <video src="${tileData.videoUrl}" autoplay loop muted playsinline></video>
+          </div>
+          <div class="tile-footer">${tileData.text}</div>
+        `;
       }
 
-      // UI 애니메이션
-      document.getElementById('polaroidCard').classList.add('fly-into-map');
-      setTimeout(() => {
-        document.getElementById('captureOverlay').style.display = 'none';
-        saveBtn.disabled = false;
-        saveBtn.innerText = "지도로 쏙! 📌 (서버 업로드)";
-      }, 700);
+      tile.addEventListener('click', () => {
+        if (tileData) openViewModal(index, tileData);
+        else showToast(`✨ #${index+1}번 빈 땅입니다! 주사위를 던져 이동하세요.`);
+      });
 
-    } catch (err) {
-      console.error(err);
-      alert("업로드에 실패했습니다. Firebase 설정을 확인해주세요.");
-      saveBtn.disabled = false;
-      saveBtn.innerText = "지도로 쏙! 📌 (서버 업로드)";
+      boardGrid.appendChild(tile);
+    });
+  }
+
+  // 2. 주사위 던지고 2초 녹화
+  recordBtn.addEventListener('click', async () => {
+    recordBtn.disabled = true;
+    const diceRoll = Math.floor(Math.random() * 3) + 1;
+    selectedTileIndex = (selectedTileIndex + diceRoll) % 12;
+    renderBoard();
+    showToast(`🎲 주사위 [${diceRoll}]! #${selectedTileIndex+1}번 칸으로 이동!`);
+
+    try {
+      recordBtn.innerText = "📸 카메라 준비 중...";
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+      
+      recordBtn.innerText = "✨ 2초 순간 기록 중!";
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks = [];
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        currentVideoBlob = new Blob(chunks, { type: 'video/mp4' });
+        
+        openRecordModal(selectedTileIndex, URL.createObjectURL(currentVideoBlob));
+        recordBtn.innerText = "🎲 주사위 던지고 2초 점령하기!";
+      };
+
+      mediaRecorder.start();
+      setTimeout(() => mediaRecorder.stop(), 2000);
+    } catch(e) {
+      alert("카메라 권한을 허용해주세요!");
+      recordBtn.disabled = false;
+      recordBtn.innerText = "🎲 주사위 던지고 2초 점령하기!";
     }
   });
 
-  function createMiniPolaroid(name, landName, video, text, sticker) {
-    return `
-      <div class="map-polaroid">
-        <div class="masking-tape"></div>
-        <video src="${video}" autoplay loop muted playsinline></video>
-        <div class="map-polaroid-land">🏰 ${landName}</div>
-        <div class="map-polaroid-text">${sticker} ${text}</div>
-        <div class="map-polaroid-owner">by ${name}</div>
+  function openRecordModal(tileIdx, localUrl) {
+    const existing = boardTiles[tileIdx];
+    const actionText = existing ? `🔥 [${existing.user}] 땅 뺏고 점령하기!` : `🏰 새로운 랜드마크 등록!`;
+
+    window.setEmoji = (emoji) => { selectedEmoji = emoji; }; // 전역 스코프 연결
+
+    modalContentBody.innerHTML = `
+      <h3>🎲 #${tileIdx+1}번 칸 점령!</h3>
+      <video class="modal-video-preview" src="${localUrl}" autoplay loop muted playsinline></video>
+      <div class="sticker-picker">
+        <span onclick="setEmoji('🏰')">🏰</span>
+        <span onclick="setEmoji('⭐')">⭐</span>
+        <span onclick="setEmoji('🔥')">🔥</span>
+        <span onclick="setEmoji('🍔')">🍔</span>
       </div>
+      <textarea id="tileDiaryText" placeholder="이 칸에 남길 소감을 적어보세요!"></textarea>
+      <button class="modal-btn" id="saveDataBtn">${actionText}</button>
     `;
+    modalOverlay.style.display = 'flex';
+
+    document.getElementById('saveDataBtn').addEventListener('click', () => saveToFirebase(tileIdx));
   }
 
-  function closeOverlay() {
-    if (stream) stream.getTracks().forEach(track => track.stop());
-    document.getElementById('captureOverlay').style.display = 'none';
+  // 3. Firebase 서버에 저장 (스토리지 + 파이어스토어)
+  async function saveToFirebase(tileIdx) {
+    const text = document.getElementById('tileDiaryText').value.trim() || "부루마블 정복 완료! 🎲";
+    const currentUser = userPicker.value;
+    
+    document.getElementById('saveDataBtn').innerText = "☁️ 서버에 깃발 꽂는 중...";
+    document.getElementById('saveDataBtn').disabled = true;
+
+    try {
+      // (1) 비디오를 Storage에 업로드
+      const fileName = `videos/tile_${Date.now()}.mp4`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, currentVideoBlob);
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      // (2) 텍스트와 영상 주소를 Firestore에 저장
+      await addDoc(collection(db, "spots"), {
+        tileIdx: tileIdx,
+        user: currentUser,
+        videoUrl: downloadUrl,
+        text: text,
+        sticker: selectedEmoji,
+        timestamp: Date.now()
+      });
+
+      modalOverlay.style.display = 'none';
+      recordBtn.disabled = false;
+      showToast(`✨ #${tileIdx+1}번 칸 완벽하게 점령 완료!`);
+    } catch(err) {
+      console.error(err);
+      alert("업로드 중 오류 발생! (Storage 규칙을 확인하셨나요?)");
+      recordBtn.disabled = false;
+    }
   }
+
+  function openViewModal(tileIdx, data) {
+    modalContentBody.innerHTML = `
+      <h3>${data.sticker} #${tileIdx+1}번 랜드마크</h3>
+      <div style="font-size:0.8rem; color:#ff9800; text-align:center; font-weight:bold;">소유주: ${data.user}</div>
+      <video class="modal-video-preview" src="${data.videoUrl}" autoplay loop muted playsinline></video>
+      <div style="background:#fff8e1; padding:10px; border-radius:10px; text-align:center; font-size:0.9rem; border:1px dashed #ff9800;">${data.text}</div>
+      <button class="modal-btn" id="closeModalBtn">닫기</button>
+    `;
+    modalOverlay.style.display = 'flex';
+    document.getElementById('closeModalBtn').addEventListener('click', () => { modalOverlay.style.display = 'none'; });
+  }
+
+  function showToast(msg) {
+    toast.innerText = msg;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+  }
+
+  // 초기 렌더링
+  renderBoard();
 </script>
 </body>
 </html>
