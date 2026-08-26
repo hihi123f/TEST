@@ -14,7 +14,7 @@
     body, html { width: 100%; height: 100%; background: #222; color: #4a4a4a; overflow: hidden; position: fixed; }
     .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; }
 
-    /* 🎨 헤더: 프로필 설정 */
+    /* 헤더 */
     header { background: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     .logo-area { font-size: 1.1rem; color: #7f8fa6; }
     .profile-setup { display: flex; gap: 8px; align-items: center; }
@@ -23,42 +23,45 @@
     .profile-setup input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
     .profile-setup input[type="color"]::-webkit-color-swatch { border: 2px solid #eaeaea; border-radius: 50%; }
 
-    /* 🌫️ 미개척 구역 (흑백 지도 효과) */
+    /* 미개척 안개 지도 (API 키 필요 없는 안정적인 타일) */
     #map { flex: 1; width: 100%; z-index: 1; background: #e5e3df; }
-    .leaflet-tile-pane { filter: grayscale(100%) opacity(0.5) contrast(1.2); } /* 지도는 흑백 안개처럼 */
-    .leaflet-overlay-pane { filter: none; } /* 내가 물들인 원은 컬러 그대로! */
+    .leaflet-tile-pane { filter: grayscale(100%) opacity(0.6) contrast(1.1); }
+    .leaflet-overlay-pane { filter: none; }
 
-    /* 📸 플로팅 버튼 영역 */
+    /* 하단 조작 바 */
     .action-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; width: 85%; max-width: 320px; }
-    .btn-main { width: 100%; padding: 16px; background: #fff; color: #4a4a4a; border: 2px solid #eaeaea; border-radius: 30px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.1); transition: 0.2s; font-weight: bold; }
-    .btn-main:active { transform: scale(0.96); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .btn-explore { background: #2f3640; color: #f5f6fa; border: none; font-size: 0.95rem; padding: 12px; }
+    .btn-main { width: 100%; padding: 15px; background: #fff; color: #4a4a4a; border: 2px solid #eaeaea; border-radius: 30px; font-size: 1.05rem; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.1); transition: 0.2s; font-weight: bold; }
+    .btn-main:active { transform: scale(0.96); }
+    .btn-explore { background: #2f3640; color: #f5f6fa; border: none; font-size: 0.9rem; padding: 11px; }
 
-    /* 📌 맵 위 폴라로이드 핀 */
+    /* 팝업 핀 */
     .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; padding: 0; }
     .leaflet-popup-tip-container { display: none; }
-    .map-polaroid { background: #fff; padding: 8px 8px 20px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 130px; position: relative; text-align: center; }
-    .masking-tape { position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(-3deg); width: 60px; height: 22px; background: rgba(255, 234, 167, 0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 2; }
-    .map-polaroid video { width: 100%; height: 100px; object-fit: cover; background: #eee; }
-    .map-polaroid-text { margin-top: 6px; font-size: 0.8rem; color: #333; }
-    .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 4px; font-weight: bold; }
+    .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 135px; position: relative; text-align: center; }
+    .masking-tape { position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-3deg); width: 55px; height: 20px; background: rgba(255, 234, 167, 0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 2; }
+    .map-polaroid video { width: 100%; height: 95px; object-fit: cover; background: #222; }
+    .map-polaroid-land { font-size: 0.75rem; color: #ff5252; font-weight: bold; margin-top: 4px; }
+    .map-polaroid-text { margin-top: 2px; font-size: 0.75rem; color: #333; line-height: 1.2; }
+    .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 3px; }
 
-    /* 📸 카메라 뷰파인더 오버레이 */
+    /* 카메라 모달 */
     #captureOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; }
-    .big-polaroid { background: #fff; padding: 12px 12px 30px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
-    .big-polaroid video { width: 100%; height: 250px; object-fit: cover; background: #222; }
+    .big-polaroid { background: #fff; padding: 12px 12px 24px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
+    .big-polaroid video { width: 100%; height: 230px; object-fit: cover; background: #222; }
     
-    #diarySection { display: none; flex-direction: column; gap: 10px; margin-top: 15px; }
-    .sticker-picker { display: flex; justify-content: space-around; font-size: 1.5rem; }
+    #diarySection { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .sticker-picker { display: flex; justify-content: space-around; font-size: 1.4rem; }
     .sticker-item { transition: 0.2s; cursor: pointer; }
     .sticker-item.selected { transform: scale(1.3); }
-    #diaryInput { width: 100%; border: none; background: #fdfbf7; border-radius: 8px; padding: 10px; font-size: 0.95rem; text-align: center; outline: none; }
+    
+    .input-field { width: 100%; border: none; background: #fdfbf7; border-radius: 8px; padding: 8px; font-size: 0.85rem; text-align: center; outline: none; }
+    .input-land { border: 1px dashed #ffb8b8; font-weight: bold; color: #d63031; }
 
-    .capture-controls { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; width: 280px; }
+    .capture-controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; width: 280px; }
     .btn-shoot { background: #ff5252; color: #fff; }
     .btn-save { background: #ffeaa7; color: #d63031; display: none; }
     
-    /* 🚀 지도로 쏙 애니메이션 */
+    /* 지도로 쏙 애니메이션 */
     .fly-into-map { animation: suckIntoMap 0.8s cubic-bezier(0.5, -0.5, 0.2, 1.5) forwards; }
     @keyframes suckIntoMap {
       0% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
@@ -66,31 +69,26 @@
       100% { transform: scale(0) translateY(300px) rotate(-15deg); opacity: 0; }
     }
 
-    /* ⚔️ 다크소울/판타지 웅장한 텍스트 연출 */
-    #epicOverlay { position: fixed; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0.5) 0%, transparent 80%); z-index: 5000; display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; opacity: 0; }
-    .epic-sub { font-family: 'Noto Serif KR', serif; color: #ff5252; font-size: 1rem; letter-spacing: 0.3rem; margin-bottom: 10px; text-shadow: 0 0 10px rgba(255, 82, 82, 0.8); }
-    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 2.5rem; letter-spacing: 0.5rem; text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+    /* ⚔️ 판타지 타이포그래피 (크기 살짝 축소 & 최적화) */
+    #epicOverlay { position: fixed; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, transparent 80%); z-index: 5000; display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; opacity: 0; text-align: center; padding: 0 20px; }
+    .epic-sub { font-family: 'Noto Serif KR', serif; color: #ff7675; font-size: 0.9rem; letter-spacing: 0.25rem; margin-bottom: 8px; text-shadow: 0 0 8px rgba(255, 118, 117, 0.8); }
+    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 1.85rem; letter-spacing: 0.35rem; text-shadow: 0 0 12px rgba(255, 255, 255, 0.8); line-height: 1.3; }
     
-    .epic-animate { display: flex !important; animation: epicFade 3.5s forwards; }
+    .epic-animate { display: flex !important; animation: epicFade 3.2s forwards; }
     @keyframes epicFade {
-      0% { opacity: 0; transform: scale(0.9); }
+      0% { opacity: 0; transform: scale(0.92); }
       15% { opacity: 1; transform: scale(1); }
-      85% { opacity: 1; transform: scale(1.05); }
-      100% { opacity: 0; transform: scale(1.1); }
+      85% { opacity: 1; transform: scale(1.03); }
+      100% { opacity: 0; transform: scale(1.08); }
     }
-
-    #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: rgba(255, 255, 255, 0.95); color: #4a4a4a; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 3000; transition: 0.4s; opacity: 0; pointer-events: none; }
-    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   </style>
 </head>
 <body>
 
 <div id="epicOverlay">
   <div class="epic-sub" id="epicSub">적장의 영토 진입</div>
-  <div class="epic-main" id="epicMain">[ 마 포 구 ]</div>
+  <div class="epic-main" id="epicMain">[ 성 동 구 ]</div>
 </div>
-
-<div id="toast">메시지</div>
 
 <div class="app-container">
   <header>
@@ -118,15 +116,17 @@
         <span class="sticker-item selected" onclick="selectSticker(this, '⚔️')">⚔️</span>
         <span class="sticker-item" onclick="selectSticker(this, '👑')">👑</span>
         <span class="sticker-item" onclick="selectSticker(this, '🔥')">🔥</span>
-        <span class="sticker-item" onclick="selectSticker(this, '💀')">💀</span>
+        <span class="sticker-item" onclick="selectSticker(this, '☕')">☕</span>
       </div>
-      <input type="text" id="diaryInput" placeholder="정복의 한마디 ✍️" autocomplete="off">
+      <!-- 영지 이름 직접 짓기 -->
+      <input type="text" class="input-field input-land" id="landNameInput" placeholder="🏰 영지 이름 (예: 성수동 카멜 성역)" autocomplete="off">
+      <input type="text" class="input-field" id="diaryInput" placeholder="정복의 한마디 ✍️" autocomplete="off">
     </div>
   </div>
 
   <div class="capture-controls">
     <button class="btn-main btn-shoot" id="shootBtn">🔴 2초 스냅 찍기</button>
-    <button class="btn-main btn-save" id="saveBtn">지도로 쏙! 📌 (영토 뺏기)</button>
+    <button class="btn-main btn-save" id="saveBtn">지도로 쏙! 📌 (영토 선포)</button>
     <button class="btn-main" style="background:transparent; color:#fff; border:none; box-shadow:none;" onclick="closeOverlay()">도망치기</button>
   </div>
 </div>
@@ -142,20 +142,17 @@
   const epicOverlay = document.getElementById('epicOverlay');
   const epicSub = document.getElementById('epicSub');
   const epicMain = document.getElementById('epicMain');
-  const toast = document.getElementById('toast');
 
-  // 지도 생성 (흑백 안개 효과는 CSS로 처리됨)
+  // 오픈스트리트맵 기반의 안전한 타일 레이어 (API 에러 완벽 해결)
   function initMap(lat, lon) {
     map = L.map('map', { zoomControl: false }).setView([lat, lon], 17);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '' }).addTo(map);
     
     tempLat = lat; tempLon = lon;
     
-    // ⚔️ 시뮬레이션을 위해 내 근처에 '적장 민서'의 땅을 미리 하나 만들어 둠
+    // 시뮬레이션용 가상 영토 (민서가 지은 영지 이름 적용)
     setTimeout(() => {
-      let enemyLat = lat + 0.0015;
-      let enemyLon = lon + 0.0015;
-      createEnemyTerritory(enemyLat, enemyLon);
+      createEnemyTerritory(lat + 0.0015, lon + 0.0015, '민서', '신비로운 보랏빛 아지트', '여기는 내 나와바리다 💀', '#8c7ae6');
     }, 1000);
   }
 
@@ -164,25 +161,22 @@
     () => initMap(37.5665, 126.9780)
   );
 
-  // 적장 영토 생성기 (컬러플하게 튀게 보임)
-  function createEnemyTerritory(lat, lon) {
-    let enemyColor = '#8c7ae6'; // 보라색
-    const circle = L.circle([lat, lon], { color: enemyColor, fillColor: enemyColor, fillOpacity: 0.4, weight: 2, radius: 60 }).addTo(map);
-    const marker = L.circleMarker([lat, lon], { radius: 6, fillColor: '#fff', color: enemyColor, weight: 3, fillOpacity: 1 }).addTo(map);
+  function createEnemyTerritory(lat, lon, user, landName, text, color) {
+    const circle = L.circle([lat, lon], { color: color, fillColor: color, fillOpacity: 0.4, weight: 2, radius: 60 }).addTo(map);
+    const marker = L.circleMarker([lat, lon], { radius: 6, fillColor: '#fff', color: color, weight: 3, fillOpacity: 1 }).addTo(map);
     
-    marker.bindPopup(createMiniPolaroid('민서 (대마법사)', '', '이 구역은 내가 지배한다 💀', '🔮'));
-    spots.push({ lat, lon, user: '민서', circle, marker, color: enemyColor });
+    marker.bindPopup(createMiniPolaroid(user, landName, '', text, '🔮'));
+    spots.push({ lat, lon, user, landName, text, circle, marker, color });
   }
 
-  // 📡 이동 시뮬레이션 (적의 땅으로 강제 이동)
+  // 📡 미지의 구역 탐색: 상대가 지은 영지 이름이 화면에 뜸!
   exploreBtn.addEventListener('click', () => {
     if (spots.length > 0) {
       let enemy = spots[0];
       map.flyTo([enemy.lat, enemy.lon], 18, { duration: 2 });
-      tempLat = enemy.lat; tempLon = enemy.lon; // 내 위치를 적의 땅으로 갱신
+      tempLat = enemy.lat; tempLon = enemy.lon;
       
-      // ⚔️ 다크소울 웅장한 텍스트 띄우기
-      setTimeout(() => triggerEpicText(`적장 ${enemy.user}의 영토`, `[ 핏 빛 안 식 처 ]`, '#ff5252'), 800);
+      setTimeout(() => triggerEpicText(`적장 ${enemy.user}의 영토`, `[ ${enemy.landName} ]`, '#ff7675'), 800);
     }
   });
 
@@ -192,11 +186,11 @@
     epicMain.innerText = main;
     
     epicOverlay.classList.remove('epic-animate');
-    void epicOverlay.offsetWidth; // 애니메이션 리셋 트릭
+    void epicOverlay.offsetWidth;
     epicOverlay.classList.add('epic-animate');
   }
 
-  // 카메라 로직
+  // 카메라 열기
   document.getElementById('openCameraBtn').addEventListener('click', async () => {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
@@ -207,14 +201,16 @@
       document.getElementById('saveBtn').style.display = 'none';
       document.getElementById('shootBtn').style.display = 'block';
       document.getElementById('diaryInput').value = '';
+      document.getElementById('landNameInput').value = '';
       
       document.getElementById('captureOverlay').style.display = 'flex';
     } catch(e) { alert("카메라 권한을 허용해주세요!"); }
   });
 
+  // 2초 스냅 촬영
   document.getElementById('shootBtn').addEventListener('click', () => {
     let shootBtn = document.getElementById('shootBtn');
-    shootBtn.innerText = "⏳ 마력 충전 중...";
+    shootBtn.innerText = "⏳ 찰칵...";
     shootBtn.disabled = true;
 
     mediaRecorder = new MediaRecorder(stream);
@@ -243,47 +239,50 @@
     selectedEmoji = emoji;
   }
 
+  // 지도로 쏙! 저장
   document.getElementById('saveBtn').addEventListener('click', () => {
-    const text = document.getElementById('diaryInput').value.trim() || "이 땅은 이제 제 껍니다.";
+    const text = document.getElementById('diaryInput').value.trim() || "소소한 일상 조각";
+    const landName = document.getElementById('landNameInput').value.trim() || "비밀스러운 성역";
     const userName = document.getElementById('userName').value || "용사";
     const userColor = document.getElementById('userColor').value;
 
     document.getElementById('polaroidCard').classList.add('fly-into-map');
     
     setTimeout(() => {
-      addSpotToMap(userName, userColor, tempLat, tempLon, currentVideoUrl, text, selectedEmoji);
+      addSpotToMap(userName, userColor, tempLat, tempLon, currentVideoUrl, landName, text, selectedEmoji);
       document.getElementById('captureOverlay').style.display = 'none';
     }, 700);
   });
 
-  function addSpotToMap(name, color, lat, lon, video, text, sticker) {
+  function addSpotToMap(name, color, lat, lon, video, landName, text, sticker) {
     let existingSpot = spots.find(s => map.distance([s.lat, s.lon], [lat, lon]) < 50);
 
     if (existingSpot) {
       if (existingSpot.user !== name) {
-        // 영토 강탈 텍스트!
-        triggerEpicText('영 토 강 탈 성 공', `[ ${name} 의 랜드마크 ]`, '#f39c12');
+        triggerEpicText('영 토 강 탈 성 공', `[ ${landName} ]`, '#fdcb6e');
       }
       existingSpot.circle.setStyle({ fillColor: color, color: color });
       existingSpot.marker.setStyle({ color: color });
-      existingSpot.marker.setPopupContent(createMiniPolaroid(name, video, text, sticker));
+      existingSpot.marker.setPopupContent(createMiniPolaroid(name, landName, video, text, sticker));
       existingSpot.user = name;
+      existingSpot.landName = landName;
       setTimeout(() => existingSpot.marker.openPopup(), 500);
     } else {
       const circle = L.circle([lat, lon], { color: color, fillColor: color, fillOpacity: 0.4, weight: 2, radius: 40 }).addTo(map);
       const marker = L.circleMarker([lat, lon], { radius: 6, fillColor: '#fff', color: color, weight: 3, fillOpacity: 1 }).addTo(map);
-      marker.bindPopup(createMiniPolaroid(name, video, text, sticker));
-      spots.push({ lat, lon, user: name, circle, marker, color });
+      marker.bindPopup(createMiniPolaroid(name, landName, video, text, sticker));
+      spots.push({ lat, lon, user: name, landName, text, circle, marker, color });
       setTimeout(() => marker.openPopup(), 500);
-      triggerEpicText('새로운 영토 개척', `[ ${name} 의 성역 ]`, '#f39c12');
+      triggerEpicText('새로운 영토 개척', `[ ${landName} ]`, '#fdcb6e');
     }
   }
 
-  function createMiniPolaroid(name, video, text, sticker) {
+  function createMiniPolaroid(name, landName, video, text, sticker) {
     return `
       <div class="map-polaroid">
         <div class="masking-tape"></div>
-        <video src="${video}" autoplay loop muted playsinline style="background:#222;"></video>
+        <video src="${video}" autoplay loop muted playsinline></video>
+        <div class="map-polaroid-land">🏰 ${landName}</div>
         <div class="map-polaroid-text">${sticker} ${text}</div>
         <div class="map-polaroid-owner">by ${name}</div>
       </div>
