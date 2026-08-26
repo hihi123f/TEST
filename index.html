@@ -14,25 +14,21 @@
     body, html { width: 100%; height: 100%; background: #222; color: #4a4a4a; overflow: hidden; position: fixed; }
     .app-container { display: flex; flex-direction: column; width: 100%; height: 100%; }
 
-    /* 헤더 */
     header { background: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     .logo-area { font-size: 1.1rem; color: #7f8fa6; }
     .profile-setup { display: flex; gap: 8px; align-items: center; }
     .profile-setup input[type="text"] { width: 70px; padding: 4px 8px; border: 2px solid #eaeaea; border-radius: 12px; font-size: 0.9rem; outline: none; text-align: center; }
     .profile-setup input[type="color"] { width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
     
-    /* 미개척 안개 지도 */
     #map { flex: 1; width: 100%; z-index: 1; background: #e5e3df; }
     .leaflet-tile-pane { filter: grayscale(100%) opacity(0.6) contrast(1.1); }
     .leaflet-overlay-pane { filter: none; }
 
-    /* 하단 조작 바 (정찰 버튼 제거하여 심플하게 변경) */
     .action-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; width: 85%; max-width: 320px; }
     .btn-main { width: 100%; padding: 15px; background: #fff; color: #4a4a4a; border: 2px solid #eaeaea; border-radius: 30px; font-size: 1.05rem; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.1); transition: 0.2s; font-weight: bold; }
     .btn-main:active { transform: scale(0.96); }
     .btn-main:disabled { opacity: 0.7; cursor: not-allowed; }
 
-    /* 팝업 핀 (폴라로이드) */
     .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; padding: 0; }
     .leaflet-popup-tip-container { display: none; }
     .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 145px; position: relative; text-align: center; }
@@ -42,10 +38,9 @@
     .map-polaroid-text { margin-top: 3px; font-size: 0.75rem; color: #333; line-height: 1.2; word-break: break-all; }
     .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 4px; }
 
-    /* 카메라 모달 */
     #captureOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; }
-    .big-polaroid { background: #fff; padding: 12px 12px 24px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
-    .big-polaroid video { width: 100%; height: 230px; object-fit: cover; background: #222; }
+    .big-polaroid { background: #fff; padding: 12px 12px 24px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; }
+    .big-polaroid video { width: 100%; height: 230px; object-fit: cover; background: #000; }
     
     #diarySection { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
     .sticker-picker { display: flex; justify-content: space-around; font-size: 1.4rem; }
@@ -59,7 +54,6 @@
     .btn-shoot { background: #ff5252; color: #fff; }
     .btn-save { background: #ffeaa7; color: #d63031; display: none; }
     
-    /* 지도로 쏙 애니메이션 */
     .fly-into-map { animation: suckIntoMap 0.8s cubic-bezier(0.5, -0.5, 0.2, 1.5) forwards; }
     @keyframes suckIntoMap {
       0% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
@@ -67,11 +61,9 @@
       100% { transform: scale(0) translateY(300px) rotate(-15deg); opacity: 0; }
     }
 
-    /* 판타지 타이포그래피 */
     #epicOverlay { position: fixed; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, transparent 80%); z-index: 5000; display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; opacity: 0; text-align: center; padding: 0 20px; }
-    .epic-sub { font-family: 'Noto Serif KR', serif; color: #ff7675; font-size: 0.9rem; letter-spacing: 0.25rem; margin-bottom: 8px; text-shadow: 0 0 8px rgba(255, 118, 117, 0.8); }
-    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 1.85rem; letter-spacing: 0.35rem; text-shadow: 0 0 12px rgba(255, 255, 255, 0.8); line-height: 1.3; }
-    
+    .epic-sub { font-family: 'Noto Serif KR', serif; color: #ff7675; font-size: 0.9rem; letter-spacing: 0.25rem; margin-bottom: 8px; }
+    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 1.85rem; letter-spacing: 0.35rem; line-height: 1.3; }
     .epic-animate { display: flex !important; animation: epicFade 3.2s forwards; }
     @keyframes epicFade {
       0% { opacity: 0; transform: scale(0.92); }
@@ -150,7 +142,7 @@
   const storage = getStorage(app);
 
   let map, stream, mediaRecorder, currentVideoBlob, currentVideoUrl;
-  let myRealLat = 37.5665, myRealLon = 126.9780; // 기본값 서울시청 세팅 (GPS 실패 방지)
+  let myRealLat = 37.5665, myRealLon = 126.9780;
   let selectedEmoji = '⚔️';
   let spots = [];
   let layerGroup = L.layerGroup();
@@ -161,12 +153,14 @@
   const saveBtn = document.getElementById('saveBtn');
   const shootBtn = document.getElementById('shootBtn');
   const gpsStatusText = document.getElementById('gpsStatusText');
+  const liveVideo = document.getElementById('liveVideo');
 
   window.selectSticker = function(el, emoji) {
     document.querySelectorAll('.sticker-item').forEach(i => i.classList.remove('selected'));
     el.classList.add('selected');
     selectedEmoji = emoji;
   };
+
   window.closeOverlay = function() {
     if(stream) stream.getTracks().forEach(track => track.stop());
     document.getElementById('captureOverlay').style.display = 'none';
@@ -179,7 +173,6 @@
     layerGroup.addTo(map);
   }
 
-  // 초기 위치 
   navigator.geolocation.getCurrentPosition(
     (pos) => { myRealLat = pos.coords.latitude; myRealLon = pos.coords.longitude; initMap(myRealLat, myRealLon); },
     () => { initMap(myRealLat, myRealLon); }
@@ -211,29 +204,30 @@
     epicOverlay.classList.add('epic-animate');
   }
 
-  // 카메라 열기 & 즉시 GPS 강제 확보 (무한 대기 방지 3초 타임아웃)
+  // 📸 카메라 안전 실행 (블랙스크린 방지)
   document.getElementById('openCameraBtn').addEventListener('click', async () => {
     try {
-      gpsStatusText.innerText = "📍 GPS 신호 확인 중...";
+      gpsStatusText.innerText = "📍 GPS 확인 중...";
       shootBtn.disabled = true;
 
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          myRealLat = pos.coords.latitude;
-          myRealLon = pos.coords.longitude;
-          gpsStatusText.innerText = "📍 GPS 수신 완료! 2초 스냅을 찍어보세요.";
-          shootBtn.disabled = false;
-        },
-        () => {
-          gpsStatusText.innerText = "⚠️ GPS 안 잡힘 (기본 위치로 설정됨)";
-          shootBtn.disabled = false;
-        },
+        (pos) => { myRealLat = pos.coords.latitude; myRealLon = pos.coords.longitude; },
+        () => {},
         { enableHighAccuracy: true, timeout: 3000 }
       );
 
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-      document.getElementById('liveVideo').srcObject = stream;
+      // 모바일 최적화 카메라 스트림 요청
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment", width: { ideal: 720 }, height: { ideal: 720 } }, 
+        audio: true 
+      });
       
+      liveVideo.srcObject = stream;
+      await liveVideo.play().catch(e => console.log(e));
+      
+      gpsStatusText.innerText = "📍 준비 완료! 2초 스냅을 찍어보세요.";
+      shootBtn.disabled = false;
+
       document.getElementById('polaroidCard').classList.remove('fly-into-map');
       document.getElementById('diarySection').style.display = 'none';
       saveBtn.style.display = 'none';
@@ -243,24 +237,40 @@
       
       document.getElementById('captureOverlay').style.display = 'flex';
     } catch(e) { 
-      alert("카메라 권한을 허용해주세요!"); 
+      alert("카메라 권한을 허용해주세요! (오류: " + e.message + ")"); 
     }
   });
 
+  // 🔴 2초 녹화 안정화 처리
   shootBtn.addEventListener('click', () => {
-    shootBtn.innerText = "⏳ 찰칵...";
+    shootBtn.innerText = "⏳ 찰칵 중...";
     shootBtn.disabled = true;
 
-    mediaRecorder = new MediaRecorder(stream);
     let chunks = [];
-    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    try {
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+    } catch (err) {
+      try {
+        mediaRecorder = new MediaRecorder(stream); // 기본 코덱 폴백
+      } catch (e) {
+        alert("이 브라우저는 영상 녹화를 지원하지 않습니다.");
+        shootBtn.disabled = false;
+        return;
+      }
+    }
+
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
     
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach(track => track.stop());
-      document.getElementById('liveVideo').srcObject = null;
-      currentVideoBlob = new Blob(chunks, { type: 'video/mp4' });
+      currentVideoBlob = new Blob(chunks, { type: 'video/webm' });
       currentVideoUrl = URL.createObjectURL(currentVideoBlob);
-      document.getElementById('liveVideo').src = currentVideoUrl;
+      
+      liveVideo.srcObject = null;
+      liveVideo.src = currentVideoUrl;
+      liveVideo.controls = true;
+      liveVideo.loop = true;
+      liveVideo.play();
 
       shootBtn.style.display = 'none';
       gpsStatusText.style.display = 'none';
@@ -270,11 +280,16 @@
       shootBtn.innerText = "🔴 2초 스냅 찍기";
       shootBtn.disabled = false;
     };
+
     mediaRecorder.start();
-    setTimeout(() => mediaRecorder.stop(), 2000);
+    setTimeout(() => {
+      if (mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
+    }, 2000);
   });
 
-  // 무한 로딩 방지 에러 캐치 장치가 달린 저장 버튼
+  // ☁️ 깃발 꽂기 (무한 로딩 차단을 위한 5초 타임아웃 안전장치 포함)
   saveBtn.addEventListener('click', async () => {
     const text = document.getElementById('diaryInput').value.trim() || "소소한 일상 조각";
     const landName = document.getElementById('landNameInput').value.trim() || "비밀스러운 성역";
@@ -284,14 +299,22 @@
     saveBtn.innerText = "☁️ 깃발 꽂는 중...";
     saveBtn.disabled = true;
 
-    try {
-      // 1. Storage 업로드
-      const fileName = `mapkku/${Date.now()}.mp4`;
-      const storageRef = ref(storage, fileName);
-      await uploadBytes(storageRef, currentVideoBlob);
-      const downloadUrl = await getDownloadURL(storageRef);
+    // ⏳ 5초 이상 응답이 없으면 무한 로딩을 강제로 끊어주는 타이머
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("서버 응답 시간이 초과되었습니다. (Storage 규칙 또는 네트워크 확인 필요)")), 5000)
+    );
 
-      // 2. 근처(50m) 핀 검사 후 강탈 또는 신규 등록
+    try {
+      // 업로드 작업을 타임아웃과 경쟁시킴
+      const uploadTask = async () => {
+        const fileName = `mapkku/${Date.now()}.webm`;
+        const storageRef = ref(storage, fileName);
+        await uploadBytes(storageRef, currentVideoBlob);
+        return await getDownloadURL(storageRef);
+      };
+
+      const downloadUrl = await Promise.race([uploadTask(), timeoutPromise]);
+
       let existingSpot = spots.find(s => map.distance([s.lat, s.lon], [myRealLat, myRealLon]) < 50);
 
       const newData = {
@@ -324,14 +347,14 @@
         saveBtn.innerText = "지도로 쏙! 📌 (영토 선포)";
         saveBtn.disabled = false;
         gpsStatusText.style.display = 'block';
+        liveVideo.controls = false;
         if(currentVideoUrl) { URL.revokeObjectURL(currentVideoUrl); currentVideoUrl = null; }
         map.flyTo([myRealLat, myRealLon], 18, { duration: 1.5 });
       }, 700);
 
     } catch (err) {
       console.error(err);
-      // 무한 로딩에 빠지지 않고 에러를 눈으로 확인할 수 있게 알림창 띄움
-      alert("🚨 저장 실패 에러 발생: " + err.message);
+      alert("🚨 깃발 꽂기 실패: " + err.message);
       saveBtn.innerText = "지도로 쏙! 📌 (영토 선포)";
       saveBtn.disabled = false;
     }
