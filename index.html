@@ -32,14 +32,22 @@
     /* 팝업 폴라로이드 스타일 */
     .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; padding: 0; }
     .leaflet-popup-tip-container { display: none; }
-    .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 2px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 145px; position: relative; text-align: center; }
+    .map-polaroid { background: #fff; padding: 8px 8px 18px 8px; border-radius: 4px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); width: 145px; position: relative; text-align: center; border: 2px solid transparent; }
+    /* 레벨3 황금 테두리 */
+    .map-polaroid.lv3-gold { border: 3px solid #f1c40f; box-shadow: 0 0 20px rgba(241, 196, 15, 0.6); background: #fffdf0; }
+    
     .masking-tape { position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-3deg); width: 55px; height: 20px; background: rgba(255, 234, 167, 0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 2; }
     .map-polaroid img { width: 100%; height: 95px; object-fit: cover; background: #222; border-radius: 2px; }
+    
+    /* 레벨/HP 뱃지 */
+    .status-badge { position: absolute; top: -10px; right: -10px; background: #2c3e50; color: #fff; font-size: 0.65rem; padding: 4px 8px; border-radius: 12px; font-weight: bold; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 3; }
+    .status-badge.gold { background: #f1c40f; color: #d35400; }
+
     .map-polaroid-land { font-size: 0.75rem; color: #ff5252; font-weight: bold; margin-top: 6px; }
     .map-polaroid-text { margin-top: 3px; font-size: 0.75rem; color: #333; line-height: 1.2; word-break: break-all; }
     .map-polaroid-owner { font-size: 0.65rem; color: #888; margin-top: 4px; }
 
-    /* 카메라 & 캡처 모달 */
+    /* 카메라 모달 */
     #captureOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; }
     .big-polaroid { background: #fff; padding: 12px 12px 24px 12px; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); width: 280px; position: relative; }
     .big-polaroid video, .big-polaroid img { width: 100%; height: 230px; object-fit: cover; background: #000; }
@@ -65,8 +73,8 @@
 
     #epicOverlay { position: fixed; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, transparent 80%); z-index: 5000; display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; opacity: 0; text-align: center; padding: 0 20px; }
     .epic-sub { font-family: 'Noto Serif KR', serif; color: #ff7675; font-size: 0.9rem; letter-spacing: 0.25rem; margin-bottom: 8px; }
-    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 1.85rem; letter-spacing: 0.35rem; line-height: 1.3; }
-    .epic-animate { display: flex !important; animation: epicFade 3.2s forwards; }
+    .epic-main { font-family: 'Noto Serif KR', serif; color: #fff; font-size: 1.85rem; letter-spacing: 0.35rem; line-height: 1.3; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+    .epic-animate { display: flex !important; animation: epicFade 3.5s forwards; }
     @keyframes epicFade {
       0% { opacity: 0; transform: scale(0.92); }
       15% { opacity: 1; transform: scale(1); }
@@ -101,7 +109,6 @@
 <div id="captureOverlay">
   <div class="big-polaroid" id="polaroidCard">
     <div class="masking-tape"></div>
-    <!-- 실시간 카메라 또는 캡처된 이미지가 들어갈 자리 -->
     <video id="liveVideo" autoplay playsinline muted></video>
     <img id="snapshotImg" style="display:none;" alt="스냅샷">
     
@@ -137,8 +144,7 @@
     projectId: "mapc-646a1",
     storageBucket: "mapc-646a1.firebasestorage.app",
     messagingSenderId: "241239587123",
-    appId: "1:241239587123:web:19ba192b03dae4ea06e646",
-    measurementId: "G-M6HCB2B8HK"
+    appId: "1:241239587123:web:19ba192b03dae4ea06e646"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -149,7 +155,7 @@
   let selectedEmoji = '⚔️';
   let spots = [];
   let layerGroup = L.layerGroup();
-  let capturedBase64 = null; // 압축된 이미지 문자열
+  let capturedBase64 = null; 
 
   const epicOverlay = document.getElementById('epicOverlay');
   const epicSub = document.getElementById('epicSub');
@@ -182,20 +188,63 @@
     () => { initMap(myRealLat, myRealLon); }
   );
 
+  // 📡 데이터 로드 및 지역 독점(Monopoly) 연산
   const q = query(collection(db, "territories"));
   onSnapshot(q, (snapshot) => {
     layerGroup.clearLayers();
     spots = []; 
+    let userClusters = {}; // 유저별 스팟 묶음
+
     snapshot.forEach((firebaseDoc) => {
       const data = firebaseDoc.data();
       data.id = firebaseDoc.id;
-      const circle = L.circle([data.lat, data.lon], { color: data.color, fillColor: data.color, fillOpacity: 0.4, weight: 2, radius: 45 });
+      data.level = data.level || 1;
+      data.hp = data.hp || 1;
+      
+      spots.push(data);
+      if(!userClusters[data.user]) userClusters[data.user] = [];
+      userClusters[data.user].push(data);
+    });
+
+    // 1. 거대한 지역 독점 오버레이 그리기
+    Object.keys(userClusters).forEach(user => {
+      let uSpots = userClusters[user];
+      if (uSpots.length >= 3) {
+        let monopolyDrawn = false;
+        for (let i = 0; i < uSpots.length; i++) {
+          let closeCount = 0;
+          for (let j = 0; j < uSpots.length; j++) {
+            if (i !== j && map.distance([uSpots[i].lat, uSpots[i].lon], [uSpots[j].lat, uSpots[j].lon]) < 300) {
+              closeCount++;
+            }
+          }
+          // 반경 300m 이내에 본인 땅이 3개 이상이면 '독점 구역' 생성
+          if (closeCount >= 2 && !monopolyDrawn) {
+            const monopolyZone = L.circle([uSpots[i].lat, uSpots[i].lon], {
+              color: uSpots[i].color, fillColor: uSpots[i].color, fillOpacity: 0.15, 
+              weight: 3, dashArray: '15, 10', radius: 300
+            });
+            monopolyZone.bindPopup(`<b>👑 ${user}의 독점 제국</b><br>이 구역은 장악되었습니다.`);
+            layerGroup.addLayer(monopolyZone);
+            monopolyDrawn = true;
+          }
+        }
+      }
+    });
+
+    // 2. 핀(폴라로이드) 렌더링
+    spots.forEach(data => {
+      // 레벨에 따른 핀 크기/시각적 변화
+      let radius = data.level === 3 ? 70 : (data.level === 2 ? 55 : 40);
+      let circleOpacity = data.level === 3 ? 0.6 : 0.3;
+      
+      const circle = L.circle([data.lat, data.lon], { color: data.color, fillColor: data.color, fillOpacity: circleOpacity, weight: 2, radius: radius });
       const marker = L.circleMarker([data.lat, data.lon], { radius: 6, fillColor: '#fff', color: data.color, weight: 3, fillOpacity: 1 });
-      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.imageUrl, data.text, data.sticker), { minWidth: 155 });
+      
+      marker.bindPopup(createMiniPolaroid(data.user, data.landName, data.imageUrl, data.text, data.sticker, data.level, data.hp), { minWidth: 155 });
+      
       layerGroup.addLayer(circle);
       layerGroup.addLayer(marker);
-      data.marker = marker;
-      spots.push(data);
     });
   });
 
@@ -213,53 +262,37 @@
     try {
       gpsStatusText.innerText = "📍 GPS 확인 중...";
       shootBtn.disabled = true;
-
       navigator.geolocation.getCurrentPosition(
         (pos) => { myRealLat = pos.coords.latitude; myRealLon = pos.coords.longitude; },
-        () => {},
-        { enableHighAccuracy: true, timeout: 3000 }
+        () => {}, { enableHighAccuracy: true, timeout: 3000 }
       );
 
-      stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 640 } }, 
-        audio: false 
-      });
-      
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 640 } }, audio: false });
       liveVideo.srcObject = stream;
       liveVideo.style.display = 'block';
       snapshotImg.style.display = 'none';
       
       gpsStatusText.innerText = "📍 준비 완료! 찰칵 버튼을 누르세요.";
       shootBtn.disabled = false;
-
       document.getElementById('polaroidCard').classList.remove('fly-into-map');
       document.getElementById('diarySection').style.display = 'none';
       saveBtn.style.display = 'none';
       shootBtn.style.display = 'block';
       document.getElementById('diaryInput').value = '';
-      document.getElementById('landNameInput').value = '';
       
       document.getElementById('captureOverlay').style.display = 'flex';
-    } catch(e) { 
-      alert("카메라 권한을 허용해주세요! (오류: " + e.message + ")"); 
-    }
+    } catch(e) { alert("카메라 권한을 허용해주세요!"); }
   });
 
-  // 🔴 스냅샷 찰칵 캡처 (캔버스 이용)
+  // 🔴 캡처
   shootBtn.addEventListener('click', () => {
     const canvas = document.createElement('canvas');
     canvas.width = liveVideo.videoWidth || 400;
     canvas.height = liveVideo.videoHeight || 400;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(liveVideo, 0, 0, canvas.width, canvas.height);
-    
-    // JPEG로 압축 (용량을 줄여 파이어스토어 1MB 제한 통과)
+    canvas.getContext('2d').drawImage(liveVideo, 0, 0, canvas.width, canvas.height);
     capturedBase64 = canvas.toDataURL('image/jpeg', 0.5);
 
-    // 카메라 스트림 끄기
     stream.getTracks().forEach(track => track.stop());
-
-    // UI 전환
     snapshotImg.src = capturedBase64;
     liveVideo.style.display = 'none';
     snapshotImg.style.display = 'block';
@@ -270,40 +303,43 @@
     document.getElementById('diarySection').style.display = 'flex';
   });
 
-  // ☁️ 파이어스토어에 직접 깃발 꽂기 (스토리지 불필요, 100% 무료)
+  // ☁️ 영토 로직 (레벨업 & 공격/강탈)
   saveBtn.addEventListener('click', async () => {
-    const text = document.getElementById('diaryInput').value.trim() || "소소한 일상 조각";
-    const landName = document.getElementById('landNameInput').value.trim() || "비밀스러운 성역";
+    const text = document.getElementById('diaryInput').value.trim() || "오늘의 정복 기록";
+    const landName = document.getElementById('landNameInput').value.trim() || "이름 없는 땅";
     const userName = document.getElementById('userName').value || "용사";
     const userColor = document.getElementById('userColor').value;
 
-    saveBtn.innerText = "☁️ 깃발 꽂는 중...";
+    saveBtn.innerText = "☁️ 판정 중...";
     saveBtn.disabled = true;
 
     try {
       let existingSpot = spots.find(s => map.distance([s.lat, s.lon], [myRealLat, myRealLon]) < 50);
 
-      const newData = {
-        lat: myRealLat,
-        lon: myRealLon,
-        user: userName,
-        color: userColor,
-        imageUrl: capturedBase64, // 압축된 이미지 문자열 저장
-        landName: landName,
-        text: text,
-        sticker: selectedEmoji,
-        timestamp: Date.now()
-      };
+      const baseData = { lat: myRealLat, lon: myRealLon, user: userName, color: userColor, imageUrl: capturedBase64, landName: landName, text: text, sticker: selectedEmoji, timestamp: Date.now() };
 
       if (existingSpot) {
-        await updateDoc(doc(db, "territories", existingSpot.id), newData);
-        if (existingSpot.user !== userName) {
-          triggerEpicText('영 토 강 탈 성 공', `[ ${landName} ]`, '#fdcb6e');
+        if (existingSpot.user === userName) {
+          // 🛡️ 내 땅 강화 (최대 레벨 3)
+          let newLevel = Math.min((existingSpot.level || 1) + 1, 3);
+          await updateDoc(doc(db, "territories", existingSpot.id), { ...baseData, level: newLevel, hp: newLevel });
+          triggerEpicText(`영토 강화 완료 (Lv.${newLevel})`, `[ ${landName} ]`, userColor);
         } else {
-          triggerEpicText('내 영 토 강 화', `[ ${landName} ]`, userColor);
+          // ⚔️ 남의 땅 공격
+          let currentHp = (existingSpot.hp || 1) - 1;
+          if (currentHp > 0) {
+            // 공격 성공했지만 뺏지는 못함 (HP 깎임)
+            await updateDoc(doc(db, "territories", existingSpot.id), { hp: currentHp });
+            triggerEpicText(`공 격 성 공`, `[ 적의 방어벽이 깎였습니다! (HP:${currentHp}) ]`, '#ffb8b8');
+          } else {
+            // 방어력 0 -> 영토 강탈 성공!
+            await updateDoc(doc(db, "territories", existingSpot.id), { ...baseData, level: 1, hp: 1 });
+            triggerEpicText(`영 토 강 탈 성 공`, `[ ${landName} ]`, '#fdcb6e');
+          }
         }
       } else {
-        await addDoc(collection(db, "territories"), newData);
+        // ✨ 신규 개척
+        await addDoc(collection(db, "territories"), { ...baseData, level: 1, hp: 1 });
         triggerEpicText('새로운 영토 개척', `[ ${landName} ]`, '#fdcb6e');
       }
 
@@ -317,16 +353,17 @@
       }, 700);
 
     } catch (err) {
-      console.error(err);
-      alert("🚨 깃발 꽂기 실패: " + err.message);
-      saveBtn.innerText = "지도로 쏙! 📌 (영토 선포)";
+      alert("🚨 실패: " + err.message);
       saveBtn.disabled = false;
     }
   });
 
-  function createMiniPolaroid(name, landName, image, text, sticker) {
+  function createMiniPolaroid(name, landName, image, text, sticker, level, hp) {
+    let borderClass = level === 3 ? "lv3-gold" : "";
+    let badgeClass = level === 3 ? "gold" : "";
     return `
-      <div class="map-polaroid">
+      <div class="map-polaroid ${borderClass}">
+        <div class="status-badge ${badgeClass}">Lv.${level} | HP ${hp}</div>
         <div class="masking-tape"></div>
         <img src="${image}" alt="폴라로이드">
         <div class="map-polaroid-land">🏰 ${landName}</div>
